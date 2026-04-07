@@ -35,3 +35,21 @@ def test_more_than_three_warns() -> None:
     files = [SimpleNamespace(name=f"{idx}.mkv", size=idx) for idx in range(4)]
     with pytest.raises(RuntimeError):
         _client(files).select_video(torrent)
+
+
+def test_uses_save_path_for_multi_file_torrent_subfolder() -> None:
+    torrent = SimpleNamespace(
+        hash="abc",
+        save_path="/tank/rtorrent/download",
+        content_path="/tank/rtorrent/download/Marc Dorcel Les Gros Seins De l'Infirmiere and Making Of 2013 VOF DVDRip x264 AC3-PPD",
+    )
+    files = [
+        SimpleNamespace(
+            name="Marc Dorcel Les Gros Seins De l'Infirmiere and Making Of 2013 VOF DVDRip x264 AC3-PPD/Marc Dorcel Les Gros Seins De l'Infirmiere 2013 VOF DVDRip x264 AC3-PPD.mp4",
+            size=20,
+        )
+    ]
+    candidate = _client(files).select_video(torrent)
+    assert candidate.path == Path(
+        "/tank/rtorrent/download/Marc Dorcel Les Gros Seins De l'Infirmiere and Making Of 2013 VOF DVDRip x264 AC3-PPD/Marc Dorcel Les Gros Seins De l'Infirmiere 2013 VOF DVDRip x264 AC3-PPD.mp4"
+    )
