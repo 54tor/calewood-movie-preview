@@ -37,15 +37,26 @@ def run(settings: Settings, force_live: bool = False) -> int:
         category=settings.calewood_api_category,
         per_page=settings.calewood_api_per_page,
     )
-    if settings.calewood_api_include_awaiting_fiche:
+    if settings.calewood_api_include_my_pre_archiving:
         raw_items.extend(
-            calewood.list_awaiting_fiche_torrents(
+            calewood.list_pre_archiving_torrents(
+                status=settings.calewood_api_pre_archiving_status,
                 category=settings.calewood_api_category,
                 per_page=settings.calewood_api_per_page,
             )
         )
+    if settings.calewood_api_include_upload_mine:
+        raw_items.extend(
+            calewood.list_upload_mine_torrents(
+                category=settings.calewood_api_category,
+                per_page=settings.calewood_api_per_page,
+            )
+        )
+    if settings.calewood_api_single_id is not None:
+        raw_items = [raw for raw in raw_items if raw.get("id") == settings.calewood_api_single_id]
 
     seen_ids: set[int] = set()
+    planned_jobs: list[dict[str, object]] = []
     stats = {
         "considered": 0,
         "processed": 0,
@@ -57,6 +68,8 @@ def run(settings: Settings, force_live: bool = False) -> int:
         "too_many_video_files": 0,
         "warnings": 0,
         "errors": 0,
+        "queued_for_capture": 0,
+        "queued_bytes": 0,
     }
     log.info(
         "Workflow started",
@@ -65,8 +78,11 @@ def run(settings: Settings, force_live: bool = False) -> int:
             "dry_run": dry_run,
             "items_fetched": len(raw_items),
             "category": settings.calewood_api_category,
+            "single_id": settings.calewood_api_single_id,
             "list_status": settings.calewood_api_list_status,
-            "include_awaiting_fiche": settings.calewood_api_include_awaiting_fiche,
+            "pre_archiving_status": settings.calewood_api_pre_archiving_status,
+            "include_my_pre_archiving": settings.calewood_api_include_my_pre_archiving,
+            "include_upload_mine": settings.calewood_api_include_upload_mine,
         },
     )
     for raw in raw_items:
@@ -163,11 +179,57 @@ def run(settings: Settings, force_live: bool = False) -> int:
                     **context,
                 },
             )
-            duration = probe_duration(settings.ffprobe_bin, candidate.path)
             temp_dir = settings.temp_dir / str(torrent.torrent_id)
+            stats["queued_for_capture"] += 1
+            stats["queued_bytes"] += candidate.size
+            planned_jobs.append(
+                {
+                    "torrent": torrent,
+                    "candidate_path": candidate.path,
+                    "candidate_size": candidate.size,
+                    "temp_dir": temp_dir,
+                    "context": context,
+                }
+            )
+        except RuntimeError as exc:
+            if str(exc) == "too_many_video_files_warning":
+                stats["too_many_video_files"] += 1
+            stats["warnings"] += 1
+            log.warning(str(exc), extra={"event": str(exc), **context})
+        except Exception as exc:
+            stats["errors"] += 1
+            log.error(str(exc), extra={"event": "workflow_error", **context})
+            exit_code = 1
+
+    log.info(
+        "Preflight completed",
+        extra={
+            "event": "preflight_completed",
+            "dry_run": dry_run,
+            "queued_for_capture": stats["queued_for_capture"],
+            "queued_bytes": stats["queued_bytes"],
+            "queued_gib": round(stats["queued_bytes"] / (1024**3), 2),
+            "considered": stats["considered"],
+            "existing_comments": stats["existing_comments"],
+            "partial_comments": stats["partial_comments"],
+            "missing_hash": stats["missing_hash"],
+            "qb_not_found": stats["qb_not_found"],
+            "qb_incomplete": stats["qb_incomplete"],
+            "too_many_video_files": stats["too_many_video_files"],
+        },
+    )
+
+    for job in planned_jobs:
+        torrent = job["torrent"]
+        candidate_path = job["candidate_path"]
+        candidate_size = job["candidate_size"]
+        temp_dir = job["temp_dir"]
+        context = job["context"]
+        try:
+            duration = probe_duration(settings.ffprobe_bin, candidate_path)
             captures = capture_frames(
                 settings.ffmpeg_bin,
-                candidate.path,
+                candidate_path,
                 duration,
                 temp_dir,
                 settings.image_format,
@@ -180,7 +242,8 @@ def run(settings: Settings, force_live: bool = False) -> int:
                     "capture_count": len(captures),
                     "capture_dir": str(temp_dir),
                     "duration_seconds": duration,
-                    "file_path": str(candidate.path),
+                    "file_path": str(candidate_path),
+                    "file_size": candidate_size,
                     **context,
                 },
             )
@@ -192,7 +255,8 @@ def run(settings: Settings, force_live: bool = False) -> int:
                         "event": "dry_run_no_remote_write",
                         "capture_count": len(captures),
                         "capture_dir": str(temp_dir),
-                        "file_path": str(candidate.path),
+                        "file_path": str(candidate_path),
+                        "file_size": candidate_size,
                         **context,
                     },
                 )
@@ -214,11 +278,6 @@ def run(settings: Settings, force_live: bool = False) -> int:
                 "Posted comment to CALEWOOD_API",
                 extra={"event": "comment_posted", "posted_link_count": len(urls), **context},
             )
-        except RuntimeError as exc:
-            if str(exc) == "too_many_video_files_warning":
-                stats["too_many_video_files"] += 1
-            stats["warnings"] += 1
-            log.warning(str(exc), extra={"event": str(exc), **context})
         except Exception as exc:
             stats["errors"] += 1
             log.error(str(exc), extra={"event": "workflow_error", **context})
