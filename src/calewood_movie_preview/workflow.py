@@ -139,23 +139,6 @@ def run(settings: Settings, force_live: bool = False) -> int:
         }
         try:
             log.info("Processing torrent", extra={"event": "processing_torrent", **context})
-            comment = torrent.comment if torrent.comment is not None else calewood.torrent_comment(torrent.torrent_id)
-            links = find_imgbb_links(comment)
-            if 1 <= len(links) < 9:
-                stats["partial_comments"] += 1
-                stats["warnings"] += 1
-                log.warning(
-                    "Partial imgbb links already present in comment",
-                    extra={"event": "partial_imgbb_links_warning", "imgbb_link_count": len(links), **context},
-                )
-                continue
-            if links:
-                stats["existing_comments"] += 1
-                log.info(
-                    "Skipping torrent with existing imgbb links",
-                    extra={"event": "skip_existing_imgbb_links", "imgbb_link_count": len(links), **context},
-                )
-                continue
             candidate_hashes = [hash_value for hash_value in [torrent.sharewood_hash, torrent.lacale_hash] if hash_value]
             if not candidate_hashes:
                 stats["missing_hash"] += 1
@@ -216,6 +199,23 @@ def run(settings: Settings, force_live: bool = False) -> int:
                     **context,
                 },
             )
+            comment = torrent.comment if torrent.comment is not None else calewood.torrent_comment(torrent.torrent_id)
+            links = find_imgbb_links(comment)
+            if 1 <= len(links) < 9:
+                stats["partial_comments"] += 1
+                stats["warnings"] += 1
+                log.warning(
+                    "Partial imgbb links already present in comment",
+                    extra={"event": "partial_imgbb_links_warning", "imgbb_link_count": len(links), **context},
+                )
+                continue
+            if links:
+                stats["existing_comments"] += 1
+                log.info(
+                    "Skipping torrent with existing imgbb links",
+                    extra={"event": "skip_existing_imgbb_links", "imgbb_link_count": len(links), **context},
+                )
+                continue
             temp_dir = settings.temp_dir / str(torrent.torrent_id)
             if detailed_preflight_enabled:
                 stats["queued_for_capture"] += 1
