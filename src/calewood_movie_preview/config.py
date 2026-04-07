@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     calewood_api_category: str = Field(default="XXX", alias="CALEWOOD_API_CATEGORY")
     calewood_api_per_page: int = Field(default=200, alias="CALEWOOD_API_PER_PAGE")
     calewood_api_include_awaiting_fiche: bool = Field(default=True, alias="CALEWOOD_API_INCLUDE_AWAITING_FICHE")
-    calewood_api_comment_wrapper_template: str | None = Field(default=None, alias="CALEWOOD_API_COMMENT_WRAPPER_TEMPLATE")
     hash_field_name: str = Field(default="info_hash", alias="HASH_FIELD_NAME")
 
     qbittorrent_base_url: str = Field(alias="QBITTORRENT_BASE_URL")
