@@ -46,8 +46,20 @@ def run(settings: Settings, force_live: bool = False) -> int:
         )
 
     seen_ids: set[int] = set()
+    stats = {
+        "considered": 0,
+        "processed": 0,
+        "partial_comments": 0,
+        "existing_comments": 0,
+        "missing_hash": 0,
+        "qb_not_found": 0,
+        "qb_incomplete": 0,
+        "too_many_video_files": 0,
+        "warnings": 0,
+        "errors": 0,
+    }
     log.info(
-        "workflow_started",
+        "Workflow started",
         extra={
             "event": "workflow_started",
             "dry_run": dry_run,
@@ -64,6 +76,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
         if torrent.torrent_id in seen_ids:
             continue
         seen_ids.add(torrent.torrent_id)
+        stats["considered"] += 1
         context = {
             "torrent_id": torrent.torrent_id,
             "status": torrent.status,
@@ -72,24 +85,29 @@ def run(settings: Settings, force_live: bool = False) -> int:
             "torrent_name": torrent.name,
         }
         try:
-            log.info("processing_torrent", extra={"event": "processing_torrent", **context})
+            log.info("Processing torrent", extra={"event": "processing_torrent", **context})
             comment = torrent.comment if torrent.comment is not None else calewood.torrent_comment(torrent.torrent_id)
             links = find_imgbb_links(comment)
             if 1 <= len(links) < 9:
+                stats["partial_comments"] += 1
+                stats["warnings"] += 1
                 log.warning(
-                    "partial_imgbb_links_warning",
+                    "Partial imgbb links already present in comment",
                     extra={"event": "partial_imgbb_links_warning", "imgbb_link_count": len(links), **context},
                 )
                 continue
             if links:
+                stats["existing_comments"] += 1
                 log.info(
-                    "skip_existing_imgbb_links",
+                    "Skipping torrent with existing imgbb links",
                     extra={"event": "skip_existing_imgbb_links", "imgbb_link_count": len(links), **context},
                 )
                 continue
             candidate_hashes = [hash_value for hash_value in [torrent.sharewood_hash, torrent.lacale_hash] if hash_value]
             if not candidate_hashes:
-                log.error("missing_source_hash", extra={"event": "missing_source_hash", **context})
+                stats["missing_hash"] += 1
+                stats["errors"] += 1
+                log.error("No usable source hash found", extra={"event": "missing_source_hash", **context})
                 exit_code = 1
                 continue
 
@@ -101,14 +119,16 @@ def run(settings: Settings, force_live: bool = False) -> int:
                     matched_hash = hash_value
                     break
             if qb_torrent is None:
+                stats["qb_not_found"] += 1
+                stats["errors"] += 1
                 log.error(
-                    "qb_torrent_not_found",
+                    "qBittorrent torrent not found for provided hashes",
                     extra={"event": "qb_torrent_not_found", "lookup_hashes": candidate_hashes, **context},
                 )
                 exit_code = 1
                 continue
             log.info(
-                "qb_torrent_matched",
+                "Matched torrent in qBittorrent",
                 extra={
                     "event": "qb_torrent_matched",
                     "matched_hash": matched_hash,
@@ -118,8 +138,9 @@ def run(settings: Settings, force_live: bool = False) -> int:
                 },
             )
             if float(getattr(qb_torrent, "progress", 0.0)) < 1.0:
+                stats["qb_incomplete"] += 1
                 log.info(
-                    "skip_incomplete_qb_torrent",
+                    "Skipping incomplete qBittorrent torrent",
                     extra={
                         "event": "skip_incomplete_qb_torrent",
                         "qb_hash": str(getattr(qb_torrent, "hash", "")),
@@ -132,7 +153,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
 
             candidate = qb.select_video(qb_torrent, settings.path_map_source, settings.path_map_target)
             log.info(
-                "selected_video_candidate",
+                "Selected video candidate",
                 extra={
                     "event": "selected_video_candidate",
                     "qb_hash": str(getattr(qb_torrent, "hash", "")),
@@ -153,7 +174,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
                 torrent.sharewood_hash or torrent.lacale_hash or str(torrent.torrent_id),
             )
             log.info(
-                "captures_generated",
+                "Generated capture set",
                 extra={
                     "event": "captures_generated",
                     "capture_count": len(captures),
@@ -164,8 +185,9 @@ def run(settings: Settings, force_live: bool = False) -> int:
                 },
             )
             if dry_run:
+                stats["processed"] += 1
                 log.info(
-                    "dry_run_no_remote_write",
+                    "Dry-run active, skipping imgbb upload and comment post",
                     extra={
                         "event": "dry_run_no_remote_write",
                         "capture_count": len(captures),
@@ -178,7 +200,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
 
             urls = [imgbb.upload(path) for path in captures]
             log.info(
-                "imgbb_upload_completed",
+                "Completed imgbb upload",
                 extra={
                     "event": "imgbb_upload_completed",
                     "uploaded_count": len(urls),
@@ -187,13 +209,26 @@ def run(settings: Settings, force_live: bool = False) -> int:
                 },
             )
             calewood.post_comment(torrent.torrent_id, "\n".join(urls))
+            stats["processed"] += 1
             log.info(
-                "comment_posted",
+                "Posted comment to CALEWOOD_API",
                 extra={"event": "comment_posted", "posted_link_count": len(urls), **context},
             )
         except RuntimeError as exc:
+            if str(exc) == "too_many_video_files_warning":
+                stats["too_many_video_files"] += 1
+            stats["warnings"] += 1
             log.warning(str(exc), extra={"event": str(exc), **context})
         except Exception as exc:
+            stats["errors"] += 1
             log.error(str(exc), extra={"event": "workflow_error", **context})
             exit_code = 1
+    log.info(
+        "Workflow finished",
+        extra={
+            "event": "workflow_finished",
+            "dry_run": dry_run,
+            **stats,
+        },
+    )
     return exit_code
