@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calewood-movie-preview"
+version = "0.1.0"
+description = "Dockerized preview generator for archived torrents"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.27,<0.29",
+  "pydantic>=2.7,<3",
+  "pydantic-settings>=2.2,<3",
+  "qbittorrent-api>=2024.3.60,<2026",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2,<9",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
