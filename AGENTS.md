@@ -4,7 +4,7 @@
 
 Construire un outil exécutable dans une image Docker qui :
 
-1. interroge une API tracker privée nommée ici `SOURCE_API`,
+1. interroge une API tracker privée nommée ici `CALEWOOD_API`,
 2. récupère les torrents dans l'état `prearchived` ou `archived`,
 3. lit le commentaire de chaque torrent,
 4. ignore tout torrent dont le commentaire contient déjà au moins un lien `imgbb`,
@@ -22,9 +22,9 @@ Le dépôt ne doit contenir aucun nom réel, aucun nom de tracker privé, aucune
 
 Utiliser uniquement des noms génériques :
 
-- `SOURCE_API`
-- `SOURCE_API_BASE_URL`
-- `SOURCE_API_TOKEN`
+- `CALEWOOD_API`
+- `CALEWOOD_API_BASE_URL`
+- `CALEWOOD_API_TOKEN`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
 - `QBITTORRENT_PASSWORD`
@@ -57,7 +57,7 @@ Le projet peut utiliser un point d'entrée Python interne au conteneur, mais il 
 
 Pour chaque exécution :
 
-1. récupérer la liste des torrents éligibles depuis `SOURCE_API`,
+1. récupérer la liste des torrents éligibles depuis `CALEWOOD_API`,
 2. filtrer sur les statuts `prearchived` et `archived`,
 3. charger le commentaire de chaque torrent,
 4. détecter la présence d'au moins un lien `imgbb` dans le commentaire,
@@ -78,7 +78,7 @@ Pour chaque exécution :
 Le hash utilisé pour retrouver le torrent doit provenir d'un champ configurable de la réponse tracker :
 
 - par défaut : `HASH_FIELD_NAME`,
-- ce champ doit être configurable car le schéma exact de `SOURCE_API` peut varier,
+- ce champ doit être configurable car le schéma exact de `CALEWOOD_API` peut varier,
 - si le hash est absent, journaliser `missing_source_hash` et passer au torrent suivant.
 
 Comparer les hashes de manière insensible à la casse.
@@ -167,7 +167,7 @@ https://...
 https://...
 ```
 
-Pas de texte additionnel sauf si `SOURCE_API` exige un wrapper particulier. Si c'est le cas, ce wrapper doit être configurable et désactivé par défaut.
+Pas de texte additionnel sauf si `CALEWOOD_API` exige un wrapper particulier. Si c'est le cas, ce wrapper doit être configurable et désactivé par défaut.
 
 ## Idempotence
 
@@ -182,7 +182,7 @@ Règles :
 
 Le log de réparation manuelle doit contenir au minimum :
 
-- l'identifiant du torrent côté `SOURCE_API`,
+- l'identifiant du torrent côté `CALEWOOD_API`,
 - le hash de correspondance,
 - le chemin vidéo retenu si connu,
 - le répertoire temporaire concerné si connu,
@@ -196,7 +196,7 @@ Chaque torrent doit être traité isolément. Un échec unitaire ne doit pas int
 
 Catégories d'erreur minimales :
 
-- `source_api_error`
+- `calewood_api_error`
 - `comment_fetch_error`
 - `already_has_imgbb`
 - `partial_imgbb_links_warning`
@@ -244,7 +244,7 @@ Structure suggérée :
 │       ├── main.py
 │       ├── config.py
 │       ├── logging.py
-│       ├── source_api.py
+│       ├── calewood_api.py
 │       ├── qbittorrent.py
 │       ├── media.py
 │       ├── imgbb.py
@@ -277,11 +277,11 @@ Contrainte spécifique :
 
 Variables d'environnement minimales :
 
-- `SOURCE_API_BASE_URL`
-- `SOURCE_API_TOKEN`
-- `SOURCE_API_TIMEOUT_SECONDS`
-- `SOURCE_API_VERIFY_TLS`
-- `SOURCE_API_ARCHIVED_STATUSES`
+- `CALEWOOD_API_BASE_URL`
+- `CALEWOOD_API_TOKEN`
+- `CALEWOOD_API_TIMEOUT_SECONDS`
+- `CALEWOOD_API_VERIFY_TLS`
+- `CALEWOOD_API_ARCHIVED_STATUSES`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
@@ -297,7 +297,7 @@ Variables d'environnement minimales :
 
 Optionnelles :
 
-- `SOURCE_API_COMMENT_WRAPPER_TEMPLATE`
+- `CALEWOOD_API_COMMENT_WRAPPER_TEMPLATE`
 - `REQUESTS_RETRY_COUNT`
 - `FFMPEG_BIN`
 - `FFPROBE_BIN`
@@ -306,7 +306,7 @@ Optionnelles :
 
 En `dry-run` :
 
-- l'outil peut lire `SOURCE_API`,
+- l'outil peut lire `CALEWOOD_API`,
 - l'outil peut lire qBittorrent,
 - l'outil peut calculer les captures,
 - l'outil ne doit pas uploader sur imgbb,
@@ -318,7 +318,7 @@ En `dry-run` :
 Le comportement par défaut du projet doit donc être non destructif :
 
 - aucune publication sur imgbb,
-- aucune modification des commentaires côté `SOURCE_API`,
+- aucune modification des commentaires côté `CALEWOOD_API`,
 - aucune action d'écriture distante tant qu'un opérateur n'a pas explicitement désactivé `dry-run`.
 
 La désactivation de `dry-run` doit se faire explicitement via l'alias `--just-do-it`.
@@ -340,7 +340,7 @@ L'image Docker doit :
 - être la plus minimale possible,
 - ne pas embarquer de secrets,
 - supporter le montage d'un volume contenant les données médias,
-- supporter un réseau permettant l'accès à `SOURCE_API`, qBittorrent et imgbb,
+- supporter un réseau permettant l'accès à `CALEWOOD_API`, qBittorrent et imgbb,
 - définir un `ENTRYPOINT` vers le point d'entrée interne du conteneur.
 
 Le conteneur doit supposer que les chemins remontés par qBittorrent sont visibles depuis le conteneur via un montage cohérent. Prévoir une option de remapping de chemin si nécessaire :
@@ -375,7 +375,7 @@ Mesures obligatoires :
 - validation stricte des variables d'environnement au démarrage,
 - message d'erreur explicite mais non sensible,
 - nettoyage des artefacts temporaires, même sur erreur,
-- aucun appel externe autre que `SOURCE_API`, qBittorrent et imgbb.
+- aucun appel externe autre que `CALEWOOD_API`, qBittorrent et imgbb.
 
 ## Détection des liens imgbb
 
@@ -426,7 +426,7 @@ Ordre de travail :
 
 1. scaffolder le projet Python et le point d'entrée du conteneur,
 2. implémenter la configuration et les logs redacts,
-3. implémenter le client `SOURCE_API`,
+3. implémenter le client `CALEWOOD_API`,
 4. implémenter le client qBittorrent avec `qbittorrent-api`,
 5. implémenter la logique de sélection du fichier vidéo,
 6. implémenter `ffprobe` et `ffmpeg`,
@@ -448,9 +448,9 @@ Ordre de travail :
 
 ## Remarques
 
-S'il manque des détails exacts sur `SOURCE_API`, les agents doivent :
+S'il manque des détails exacts sur `CALEWOOD_API`, les agents doivent :
 
 1. garder une interface client propre et adaptable,
-2. centraliser le mapping de schéma dans `source_api.py`,
+2. centraliser le mapping de schéma dans `calewood_api.py`,
 3. documenter clairement les hypothèses dans `README.md`,
 4. ne jamais remplacer des inconnues par des valeurs réelles ou identifiantes.
