@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     log_format: str = Field(default="text", alias="LOG_FORMAT")
     temp_dir: Path = Field(default=Path("/tmp/movie-preview"), alias="TEMP_DIR")
     requests_retry_count: int = Field(default=2, alias="REQUESTS_RETRY_COUNT")
+    preflight_max_items: int = Field(default=9, alias="PREFLIGHT_MAX_ITEMS")
     ffmpeg_bin: str = Field(default="ffmpeg", alias="FFMPEG_BIN")
     ffprobe_bin: str = Field(default="ffprobe", alias="FFPROBE_BIN")
     path_map_source: str | None = Field(default=None, alias="PATH_MAP_SOURCE")
