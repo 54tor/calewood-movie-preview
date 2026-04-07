@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     ffprobe_bin: str = Field(default="ffprobe", alias="FFPROBE_BIN")
     path_map_source: str | None = Field(default=None, alias="PATH_MAP_SOURCE")
     path_map_target: str | None = Field(default=None, alias="PATH_MAP_TARGET")
+
+    @field_validator("calewood_api_single_id", mode="before")
+    @classmethod
+    def normalize_single_id(cls, value: object) -> object:
+        if value is None:
+            return None
+        if isinstance(value, str) and value.strip().lower() in {"", "none", "null"}:
+            return None
+        return value
 
     def archived_statuses(self) -> set[str]:
         return {item.strip() for item in self.calewood_api_archived_statuses.split(",") if item.strip()}
