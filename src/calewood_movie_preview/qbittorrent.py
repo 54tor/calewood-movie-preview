@@ -31,6 +31,7 @@ class QBittorrentClient:
     def select_video(self, torrent, path_map_source: str | None = None, path_map_target: str | None = None) -> VideoCandidate:
         files = []
         content_path = Path(str(getattr(torrent, "content_path")))
+        save_path = Path(str(getattr(torrent, "save_path", content_path.parent)))
         for item in self._client.torrents_files(torrent_hash=torrent.hash):
             path = Path(getattr(item, "name"))
             if path.suffix.lower() not in VIDEO_EXTENSIONS:
@@ -41,7 +42,7 @@ class QBittorrentClient:
                 # qBittorrent returns the full file path for single-file torrents.
                 full_path = content_path
             else:
-                full_path = content_path / path
+                full_path = save_path / path
             if path_map_source and path_map_target:
                 full_path = Path(str(full_path).replace(path_map_source, path_map_target, 1))
             files.append(VideoCandidate(path=full_path, size=int(getattr(item, "size", 0))))
