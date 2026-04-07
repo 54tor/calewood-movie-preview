@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     image_format: str = Field(default="jpg", alias="IMAGE_FORMAT")
     dry_run: bool = Field(default=True, alias="DRY_RUN")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_format: str = Field(default="text", alias="LOG_FORMAT")
     temp_dir: Path = Field(default=Path("/tmp/movie-preview"), alias="TEMP_DIR")
     requests_retry_count: int = Field(default=2, alias="REQUESTS_RETRY_COUNT")
     ffmpeg_bin: str = Field(default="ffmpeg", alias="FFMPEG_BIN")

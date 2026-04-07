@@ -14,7 +14,7 @@ def main() -> int:
     args = parser.parse_args()
 
     settings = Settings()
-    configure_logging(settings.log_level)
+    configure_logging(settings.log_level, settings.log_format)
     log = logging.getLogger("calewood_movie_preview.main")
     try:
         return run(settings, force_live=args.just_do_it)
