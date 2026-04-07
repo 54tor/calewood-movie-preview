@@ -45,9 +45,23 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, ensure_ascii=True)
 
 
-def configure_logging(level: str) -> None:
+class TextFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        extras: list[str] = []
+        for key, value in record.__dict__.items():
+            if key in DEFAULT_LOG_RECORD_FIELDS or key.startswith("_"):
+                continue
+            extras.append(f"{key}={value}")
+        suffix = f" | {' '.join(extras)}" if extras else ""
+        return f"[{record.levelname}] {record.getMessage()}{suffix}"
+
+
+def configure_logging(level: str, log_format: str = "text") -> None:
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JsonFormatter())
+    if log_format.lower() == "json":
+        handler.setFormatter(JsonFormatter())
+    else:
+        handler.setFormatter(TextFormatter())
     root = logging.getLogger()
     root.handlers.clear()
     root.addHandler(handler)
