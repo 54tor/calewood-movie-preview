@@ -57,21 +57,24 @@ Le projet peut utiliser un point d'entrée Python interne au conteneur, mais il 
 
 Pour chaque exécution :
 
-1. récupérer la liste des torrents éligibles depuis `CALEWOOD_API`,
-2. filtrer sur les statuts `prearchived` et `archived`,
-3. charger le commentaire de chaque torrent,
-4. détecter la présence d'au moins un lien `imgbb` dans le commentaire,
-5. si un lien `imgbb` existe déjà, marquer le torrent comme `skipped_already_has_preview`,
-6. sinon, récupérer le hash de correspondance côté tracker,
-7. se connecter à qBittorrent Web API,
-8. retrouver le torrent qBittorrent correspondant à ce hash,
-9. déterminer le chemin du contenu,
-10. identifier le bon fichier vidéo,
-11. calculer la durée totale,
-12. extraire 9 captures,
-13. uploader les captures sur `IMGBB_API`,
-14. poster un commentaire avec les 9 URLs, une par ligne,
-15. journaliser le résultat.
+1. récupérer les torrents `my-archiving` depuis `/api/archive/list`,
+2. récupérer aussi les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
+3. récupérer aussi les torrents `mine` via `/api/upload/list`,
+4. filtrer sur la catégorie configurée,
+5. fusionner les sources par `id`,
+6. charger le commentaire de chaque torrent,
+7. détecter la présence d'au moins un lien `imgbb` dans le commentaire,
+8. si un lien `imgbb` existe déjà, marquer le torrent comme `skipped_already_has_preview`,
+9. sinon, récupérer le hash de correspondance côté tracker,
+10. se connecter à qBittorrent Web API,
+11. retrouver le torrent qBittorrent correspondant à ce hash,
+12. déterminer le chemin du contenu,
+13. identifier le bon fichier vidéo,
+14. calculer la durée totale,
+15. extraire 9 captures,
+16. uploader les captures sur `IMGBB_API`,
+17. poster un commentaire avec les 9 URLs, une par ligne,
+18. journaliser le résultat.
 
 ## Correspondance avec qBittorrent
 
@@ -283,7 +286,10 @@ Variables d'environnement minimales :
 - `CALEWOOD_API_VERIFY_TLS`
 - `CALEWOOD_API_ARCHIVED_STATUSES`
 - `CALEWOOD_API_CATEGORY`
-- `CALEWOOD_API_INCLUDE_AWAITING_FICHE`
+- `CALEWOOD_API_SINGLE_ID`
+- `CALEWOOD_API_INCLUDE_UPLOAD_MINE`
+- `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING`
+- `CALEWOOD_API_PRE_ARCHIVING_STATUS`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
@@ -306,8 +312,12 @@ Optionnelles :
 Valeurs par défaut attendues :
 
 - `CALEWOOD_API_BASE_URL=https://calewood.n0flow.io/api`
+- `CALEWOOD_API_LIST_STATUS=my-archiving`
 - `CALEWOOD_API_CATEGORY=XXX`
-- `CALEWOOD_API_INCLUDE_AWAITING_FICHE=true`
+- `CALEWOOD_API_SINGLE_ID` vide par défaut, utile pour un test ciblé,
+- `CALEWOOD_API_INCLUDE_UPLOAD_MINE=true`
+- `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING=true`
+- `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving`
 - `CALEWOOD_API_PER_PAGE=200`
 
 ## Comportement `dry-run`
