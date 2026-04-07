@@ -28,19 +28,21 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 
 À chaque exécution, le conteneur :
 
-1. récupère les torrents `done`,
-2. récupère aussi les torrents `awaiting_fiche` en catégorie `XXX`,
-3. lit le commentaire de chaque torrent,
-4. détecte les liens `imgbb.com` et `i.ibb.co`,
-5. skippe les torrents déjà illustrés,
-6. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
-7. récupère le hash de correspondance depuis `CALEWOOD_API`,
-8. interroge qBittorrent,
-9. sélectionne le bon fichier vidéo,
-10. calcule la durée avec `ffprobe`,
-11. extrait 9 captures avec `ffmpeg`,
-12. upload les captures sur imgbb,
-13. poste les 9 URLs dans le commentaire du torrent.
+1. récupère les torrents `my-archiving` via `/api/archive/list`,
+2. récupère aussi les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
+3. récupère aussi les torrents `mine` via `/api/upload/list`,
+4. fusionne les sources par `id`,
+5. lit le commentaire de chaque torrent,
+6. détecte les liens `imgbb.com` et `i.ibb.co`,
+7. skippe les torrents déjà illustrés,
+8. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
+9. récupère le hash de correspondance depuis `CALEWOOD_API`,
+10. interroge qBittorrent,
+11. sélectionne le bon fichier vidéo,
+12. calcule la durée avec `ffprobe`,
+13. extrait 9 captures avec `ffmpeg`,
+14. upload les captures sur imgbb,
+15. poste les 9 URLs dans le commentaire du torrent.
 
 ## Règles De Sélection Vidéo
 
@@ -128,7 +130,10 @@ Variables minimales :
 - `CALEWOOD_API_VERIFY_TLS`
 - `CALEWOOD_API_ARCHIVED_STATUSES`
 - `CALEWOOD_API_CATEGORY`
-- `CALEWOOD_API_INCLUDE_AWAITING_FICHE`
+- `CALEWOOD_API_INCLUDE_UPLOAD_MINE`
+- `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING`
+- `CALEWOOD_API_PRE_ARCHIVING_STATUS`
+- `CALEWOOD_API_SINGLE_ID`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
@@ -153,9 +158,12 @@ Variables optionnelles :
 Valeurs de comportement attendues :
 
 - `CALEWOOD_API_BASE_URL=https://calewood.n0flow.io/api` par défaut
-- `CALEWOOD_API_LIST_STATUS=my-archives` par défaut
+- `CALEWOOD_API_LIST_STATUS=my-archiving` par défaut
 - `CALEWOOD_API_CATEGORY=XXX` par défaut
-- `CALEWOOD_API_INCLUDE_AWAITING_FICHE=true` par défaut
+- `CALEWOOD_API_SINGLE_ID` vide par défaut
+- `CALEWOOD_API_INCLUDE_UPLOAD_MINE=true` par défaut
+- `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING=true` par défaut
+- `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving` par défaut
 - `CALEWOOD_API_PER_PAGE=200` par défaut
 - `HASH_FIELD_NAME=sharewood_hash` recommandé
 - `DRY_RUN=true` par défaut
