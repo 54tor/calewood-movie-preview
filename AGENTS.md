@@ -57,9 +57,9 @@ Le projet peut utiliser un point d'entrée Python interne au conteneur, mais il 
 
 Pour chaque exécution :
 
-1. récupérer les torrents `my-archiving` depuis `/api/archive/list`,
-2. récupérer aussi les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
-3. récupérer aussi les torrents `mine` via `/api/upload/list`,
+1. récupérer les torrents `my-archives` depuis `/api/archive/list`,
+2. récupérer aussi les torrents `awaiting_fiche` via `/api/archive/pre-archivage/list`,
+3. récupérer aussi les torrents `my-uploads` via `/api/upload/list`,
 4. filtrer sur la catégorie configurée,
 5. fusionner les sources par `id`,
 6. charger le commentaire de chaque torrent,
@@ -290,6 +290,7 @@ Variables d'environnement minimales :
 - `CALEWOOD_API_INCLUDE_UPLOAD_MINE`
 - `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING`
 - `CALEWOOD_API_PRE_ARCHIVING_STATUS`
+- `CALEWOOD_API_UPLOAD_STATUS`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
@@ -312,12 +313,13 @@ Optionnelles :
 Valeurs par défaut attendues :
 
 - `CALEWOOD_API_BASE_URL=https://calewood.n0flow.io/api`
-- `CALEWOOD_API_LIST_STATUS=my-archiving`
+- `CALEWOOD_API_LIST_STATUS=my-archives`
 - `CALEWOOD_API_CATEGORY=XXX`
 - `CALEWOOD_API_SINGLE_ID` vide par défaut, utile pour un test ciblé,
 - `CALEWOOD_API_INCLUDE_UPLOAD_MINE=true`
 - `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING=true`
-- `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving`
+- `CALEWOOD_API_PRE_ARCHIVING_STATUS=awaiting_fiche`
+- `CALEWOOD_API_UPLOAD_STATUS=my-uploads`
 - `CALEWOOD_API_PER_PAGE=200`
 
 ## Comportement `dry-run`

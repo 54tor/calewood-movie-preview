@@ -28,9 +28,9 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 
 À chaque exécution, le conteneur :
 
-1. récupère les torrents `my-archiving` via `/api/archive/list`,
-2. récupère aussi les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
-3. récupère aussi les torrents `mine` via `/api/upload/list`,
+1. récupère les torrents `my-archives` via `/api/archive/list`,
+2. récupère aussi les torrents `awaiting_fiche` via `/api/archive/pre-archivage/list`,
+3. récupère aussi les torrents `my-uploads` via `/api/upload/list`,
 4. fusionne les sources par `id`,
 5. lit le commentaire de chaque torrent,
 6. détecte les liens `imgbb.com` et `i.ibb.co`,
@@ -133,6 +133,7 @@ Variables minimales :
 - `CALEWOOD_API_INCLUDE_UPLOAD_MINE`
 - `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING`
 - `CALEWOOD_API_PRE_ARCHIVING_STATUS`
+- `CALEWOOD_API_UPLOAD_STATUS`
 - `CALEWOOD_API_SINGLE_ID`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
@@ -158,12 +159,13 @@ Variables optionnelles :
 Valeurs de comportement attendues :
 
 - `CALEWOOD_API_BASE_URL=https://calewood.n0flow.io/api` par défaut
-- `CALEWOOD_API_LIST_STATUS=my-archiving` par défaut
+- `CALEWOOD_API_LIST_STATUS=my-archives` par défaut
 - `CALEWOOD_API_CATEGORY=XXX` par défaut
 - `CALEWOOD_API_SINGLE_ID` vide par défaut
 - `CALEWOOD_API_INCLUDE_UPLOAD_MINE=true` par défaut
 - `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING=true` par défaut
-- `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving` par défaut
+- `CALEWOOD_API_PRE_ARCHIVING_STATUS=awaiting_fiche` par défaut
+- `CALEWOOD_API_UPLOAD_STATUS=my-uploads` par défaut
 - `CALEWOOD_API_PER_PAGE=200` par défaut
 - `HASH_FIELD_NAME=sharewood_hash` recommandé
 - `DRY_RUN=true` par défaut

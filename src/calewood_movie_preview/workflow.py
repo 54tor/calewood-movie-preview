@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from pathlib import Path
 
 from .calewood_api import CalewoodApiClient
@@ -48,12 +49,23 @@ def run(settings: Settings, force_live: bool = False) -> int:
     if settings.calewood_api_include_upload_mine:
         raw_items.extend(
             calewood.list_upload_mine_torrents(
+                status=settings.calewood_api_upload_status,
                 category=settings.calewood_api_category,
                 per_page=settings.calewood_api_per_page,
             )
         )
     if settings.calewood_api_single_id is not None:
         raw_items = [raw for raw in raw_items if raw.get("id") == settings.calewood_api_single_id]
+
+    raw_status_counts = Counter()
+    missing_id_or_status = 0
+    for raw in raw_items:
+        raw_id = raw.get("id")
+        raw_status = raw.get("status")
+        if raw_id is None or raw_status is None:
+            missing_id_or_status += 1
+            continue
+        raw_status_counts[str(raw_status)] += 1
 
     seen_ids: set[int] = set()
     planned_jobs: list[dict[str, object]] = []
@@ -81,8 +93,12 @@ def run(settings: Settings, force_live: bool = False) -> int:
             "single_id": settings.calewood_api_single_id,
             "list_status": settings.calewood_api_list_status,
             "pre_archiving_status": settings.calewood_api_pre_archiving_status,
+            "upload_status": settings.calewood_api_upload_status,
             "include_my_pre_archiving": settings.calewood_api_include_my_pre_archiving,
             "include_upload_mine": settings.calewood_api_include_upload_mine,
+            "archived_statuses": sorted(settings.archived_statuses()),
+            "raw_status_counts": dict(raw_status_counts),
+            "missing_id_or_status": missing_id_or_status,
         },
     )
     for raw in raw_items:
