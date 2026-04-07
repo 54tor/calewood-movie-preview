@@ -4,15 +4,13 @@
 
 Le conteneur :
 
-- lit les torrents éligibles depuis `SOURCE_API`,
+- lit les torrents éligibles depuis `CALEWOOD_API`,
 - vérifie si le commentaire contient déjà des liens `imgbb`,
 - retrouve le torrent correspondant dans qBittorrent avec le package Python officiel `qbittorrent-api`,
 - localise le bon fichier vidéo,
 - génère 9 captures à `10%`, `20%`, `30%`, `40%`, `50%`, `60%`, `70%`, `80%`, `90%`,
 - envoie les images sur `IMGBB_API`,
 - poste ensuite les 9 URLs dans le commentaire du torrent, une URL par ligne.
-
-Le projet est documenté pour rester anonyme à 100%. Aucun nom réel de tracker, aucune URL réelle, aucun secret et aucun exemple de production ne doivent apparaître dans le dépôt.
 
 ## Sécurité Par Défaut
 
@@ -21,7 +19,7 @@ Le comportement par défaut est `dry-run`.
 Sans action explicite :
 
 - aucune image n'est publiée sur imgbb,
-- aucun commentaire n'est modifié côté `SOURCE_API`,
+- aucun commentaire n'est modifié côté `CALEWOOD_API`,
 - aucune écriture distante n'est autorisée.
 
 Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--just-do-it`.
@@ -35,7 +33,7 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 3. détecte les liens `imgbb.com` et `i.ibb.co`,
 4. skippe les torrents déjà illustrés,
 5. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
-6. récupère le hash de correspondance depuis `SOURCE_API`,
+6. récupère le hash de correspondance depuis `CALEWOOD_API`,
 7. interroge qBittorrent,
 8. sélectionne le bon fichier vidéo,
 9. calcule la durée avec `ffprobe`,
@@ -76,7 +74,7 @@ Si des captures ont été produites ou si des uploads partiels existent sans com
 
 Ce log doit permettre d'identifier :
 
-- l'identifiant du torrent côté `SOURCE_API`,
+- l'identifiant du torrent côté `CALEWOOD_API`,
 - le hash de correspondance,
 - le chemin vidéo retenu,
 - le répertoire temporaire,
@@ -122,11 +120,11 @@ docker run --rm --platform linux/amd64 \
 
 Variables minimales :
 
-- `SOURCE_API_BASE_URL`
-- `SOURCE_API_TOKEN`
-- `SOURCE_API_TIMEOUT_SECONDS`
-- `SOURCE_API_VERIFY_TLS`
-- `SOURCE_API_ARCHIVED_STATUSES`
+- `CALEWOOD_API_BASE_URL`
+- `CALEWOOD_API_TOKEN`
+- `CALEWOOD_API_TIMEOUT_SECONDS`
+- `CALEWOOD_API_VERIFY_TLS`
+- `CALEWOOD_API_ARCHIVED_STATUSES`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
@@ -142,7 +140,7 @@ Variables minimales :
 
 Variables optionnelles :
 
-- `SOURCE_API_COMMENT_WRAPPER_TEMPLATE`
+- `CALEWOOD_API_COMMENT_WRAPPER_TEMPLATE`
 - `REQUESTS_RETRY_COUNT`
 - `FFMPEG_BIN`
 - `FFPROBE_BIN`
@@ -219,8 +217,8 @@ Le dépôt peut contenir temporairement un stub technique pendant la phase de co
 
 ## Documentation Interne
 
-Les exigences détaillées d'implémentation sont définies dans `AGENTS.md`.
+Les exigences détaillées d'implémentation sont définies dans [`AGENTS.md`](AGENTS.md).
 
 ## Licence
 
-Ce projet est distribué sous licence `GNU GPL v3`. Voir `LICENSE`.
+Ce projet est distribué sous licence `GNU GPL v3`. Voir [`LICENSE`](LICENSE).
