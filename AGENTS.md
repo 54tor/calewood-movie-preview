@@ -167,7 +167,7 @@ https://...
 https://...
 ```
 
-Pas de texte additionnel sauf si `CALEWOOD_API` exige un wrapper particulier. Si c'est le cas, ce wrapper doit être configurable et désactivé par défaut.
+Le commentaire publié remplace entièrement l'ancien commentaire. Il ne doit jamais être concaténé ni enrichi avec du texte additionnel.
 
 ## Idempotence
 
@@ -299,7 +299,6 @@ Variables d'environnement minimales :
 
 Optionnelles :
 
-- `CALEWOOD_API_COMMENT_WRAPPER_TEMPLATE`
 - `REQUESTS_RETRY_COUNT`
 - `FFMPEG_BIN`
 - `FFPROBE_BIN`

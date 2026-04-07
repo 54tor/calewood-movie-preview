@@ -144,7 +144,6 @@ Variables minimales :
 
 Variables optionnelles :
 
-- `CALEWOOD_API_COMMENT_WRAPPER_TEMPLATE`
 - `REQUESTS_RETRY_COUNT`
 - `FFMPEG_BIN`
 - `FFPROBE_BIN`
