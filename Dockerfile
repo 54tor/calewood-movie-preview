@@ -5,10 +5,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN useradd --create-home --uid 1000 docker-user
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 1000 docker-user
 
-COPY docker/entrypoint.py /app/entrypoint.py
+COPY pyproject.toml /app/pyproject.toml
+COPY src /app/src
+
+RUN pip install --no-cache-dir .
 
 USER docker-user
 
-ENTRYPOINT ["python", "/app/entrypoint.py"]
+ENTRYPOINT ["python", "-m", "calewood_movie_preview.main"]
