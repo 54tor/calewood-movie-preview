@@ -85,6 +85,14 @@ Comparer les hashes de manière insensible à la casse.
 
 ## Résolution du fichier vidéo
 
+Lors de la lecture des torrents depuis qBittorrent, seuls les torrents complétés à `100%` doivent être considérés.
+
+Règle :
+
+- si le torrent qBittorrent correspondant n'est pas complété à `100%`, il doit être ignoré,
+- ce filtre s'applique avant toute lecture de fichiers,
+- dans ce cas, journaliser un skip explicite et ne pas tenter de capture.
+
 Cas à gérer :
 
 - si qBittorrent expose un unique fichier vidéo, le prendre,

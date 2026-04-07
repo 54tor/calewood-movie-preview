@@ -45,6 +45,8 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 
 ## Règles De Sélection Vidéo
 
+Seuls les torrents qBittorrent complétés à `100%` sont traités. Si le torrent n'est pas terminé, il est ignoré avant toute sélection de fichier.
+
 - `1` fichier vidéo : il est utilisé.
 - `2` fichiers vidéo : le plus gros est utilisé.
 - `3` fichiers vidéo : le plus gros est utilisé.
