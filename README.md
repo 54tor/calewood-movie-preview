@@ -28,18 +28,19 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 
 À chaque exécution, le conteneur :
 
-1. récupère les torrents `prearchived` et `archived`,
-2. lit le commentaire de chaque torrent,
-3. détecte les liens `imgbb.com` et `i.ibb.co`,
-4. skippe les torrents déjà illustrés,
-5. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
-6. récupère le hash de correspondance depuis `CALEWOOD_API`,
-7. interroge qBittorrent,
-8. sélectionne le bon fichier vidéo,
-9. calcule la durée avec `ffprobe`,
-10. extrait 9 captures avec `ffmpeg`,
-11. upload les captures sur imgbb,
-12. poste les 9 URLs dans le commentaire du torrent.
+1. récupère les torrents `done`,
+2. récupère aussi les torrents `awaiting_fiche` en catégorie `XXX`,
+3. lit le commentaire de chaque torrent,
+4. détecte les liens `imgbb.com` et `i.ibb.co`,
+5. skippe les torrents déjà illustrés,
+6. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
+7. récupère le hash de correspondance depuis `CALEWOOD_API`,
+8. interroge qBittorrent,
+9. sélectionne le bon fichier vidéo,
+10. calcule la durée avec `ffprobe`,
+11. extrait 9 captures avec `ffmpeg`,
+12. upload les captures sur imgbb,
+13. poste les 9 URLs dans le commentaire du torrent.
 
 ## Règles De Sélection Vidéo
 
@@ -95,6 +96,7 @@ Le volume monté doit correspondre en priorité au répertoire de téléchargeme
 Contrainte importante :
 
 - le chemin vu depuis le conteneur doit idéalement être exactement le même que celui renvoyé par qBittorrent,
+- en pratique, il faut réutiliser dans ce conteneur les mêmes chemins de montage que dans le conteneur qBittorrent,
 - autrement dit, si qBittorrent annonce un fichier sous un préfixe donné, ce même préfixe doit exister dans le conteneur,
 - le remapping `PATH_MAP_SOURCE` / `PATH_MAP_TARGET` ne doit être utilisé qu'en second choix si un montage identique est impossible.
 
@@ -103,7 +105,7 @@ Mode sûr par défaut :
 ```bash
 docker run --rm --platform linux/amd64 \
   --env-file .env \
-  -v <QBITTORRENT_DOWNLOAD_ROOT>:<QBITTORRENT_DOWNLOAD_ROOT>:ro \
+  -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview
 ```
 
@@ -112,7 +114,7 @@ Mode actif :
 ```bash
 docker run --rm --platform linux/amd64 \
   --env-file .env \
-  -v <QBITTORRENT_DOWNLOAD_ROOT>:<QBITTORRENT_DOWNLOAD_ROOT>:ro \
+  -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview --just-do-it
 ```
 
@@ -125,6 +127,8 @@ Variables minimales :
 - `CALEWOOD_API_TIMEOUT_SECONDS`
 - `CALEWOOD_API_VERIFY_TLS`
 - `CALEWOOD_API_ARCHIVED_STATUSES`
+- `CALEWOOD_API_CATEGORY`
+- `CALEWOOD_API_INCLUDE_AWAITING_FICHE`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
@@ -149,6 +153,12 @@ Variables optionnelles :
 
 Valeurs de comportement attendues :
 
+- `CALEWOOD_API_BASE_URL=https://calewood.n0flow.io/api` par défaut
+- `CALEWOOD_API_LIST_STATUS=my-archives` par défaut
+- `CALEWOOD_API_CATEGORY=XXX` par défaut
+- `CALEWOOD_API_INCLUDE_AWAITING_FICHE=true` par défaut
+- `CALEWOOD_API_PER_PAGE=200` par défaut
+- `HASH_FIELD_NAME=sharewood_hash` recommandé
 - `DRY_RUN=true` par défaut
 - `IMAGE_FORMAT=jpg` par défaut
 
@@ -168,6 +178,7 @@ Exemple :
 Le comportement recommandé reste :
 
 - monter le dossier de téléchargement qBittorrent avec le même chemin côté hôte et côté conteneur,
+- reprendre les mêmes chemins de montage que ceux utilisés par le conteneur qBittorrent,
 - éviter le remapping quand ce montage identique est possible,
 - réserver `PATH_MAP_SOURCE` et `PATH_MAP_TARGET` aux environnements où cette symétrie de chemin n'est pas faisable.
 
@@ -198,7 +209,7 @@ Run de vérification sans action distante :
 docker run --rm --platform linux/amd64 \
   --env-file .env \
   -e DRY_RUN=true \
-  -v <QBITTORRENT_DOWNLOAD_ROOT>:<QBITTORRENT_DOWNLOAD_ROOT>:ro \
+  -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview
 ```
 
@@ -207,13 +218,21 @@ Run réel avec opt-in explicite :
 ```bash
 docker run --rm --platform linux/amd64 \
   --env-file .env \
-  -v <QBITTORRENT_DOWNLOAD_ROOT>:<QBITTORRENT_DOWNLOAD_ROOT>:ro \
+  -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview --just-do-it
 ```
 
-## État Du Dépôt
+## Fichier Env
 
-Le dépôt peut contenir temporairement un stub technique pendant la phase de construction, mais ce README décrit le comportement attendu du produit final.
+Un fichier d'exemple est fourni :
+
+- `.env.example`
+
+Le lancement standard attendu est :
+
+1. copier `.env.example` vers `.env`
+2. remplacer les secrets et URLs nécessaires
+3. lancer le conteneur avec `--env-file .env`
 
 ## Documentation Interne
 
