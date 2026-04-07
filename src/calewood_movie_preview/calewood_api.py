@@ -21,8 +21,11 @@ class CalewoodApiClient:
     def list_torrents(self, *, status: str, category: str | None = None, per_page: int = 100) -> list[dict]:
         return self._list_paginated("archive/list", status=status, category=category, per_page=per_page)
 
-    def list_awaiting_fiche_torrents(self, *, category: str | None = None, per_page: int = 100) -> list[dict]:
-        return self._list_paginated("upload/pre-archivage/list", status=None, category=category, per_page=per_page)
+    def list_pre_archiving_torrents(self, *, status: str, category: str | None = None, per_page: int = 100) -> list[dict]:
+        return self._list_paginated("archive/pre-archivage/list", status=status, category=category, per_page=per_page)
+
+    def list_upload_mine_torrents(self, *, category: str | None = None, per_page: int = 100) -> list[dict]:
+        return self._list_paginated("upload/list", status="mine", category=category, per_page=per_page)
 
     def _list_paginated(
         self,
