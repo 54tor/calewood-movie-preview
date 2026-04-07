@@ -239,7 +239,7 @@ Structure suggérée :
 ├── README.md
 ├── pyproject.toml
 ├── src/
-│   └── movie_preview/
+│   └── calewood_movie_preview/
 │       ├── __init__.py
 │       ├── main.py
 │       ├── config.py
@@ -282,6 +282,8 @@ Variables d'environnement minimales :
 - `CALEWOOD_API_TIMEOUT_SECONDS`
 - `CALEWOOD_API_VERIFY_TLS`
 - `CALEWOOD_API_ARCHIVED_STATUSES`
+- `CALEWOOD_API_CATEGORY`
+- `CALEWOOD_API_INCLUDE_AWAITING_FICHE`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
@@ -301,6 +303,13 @@ Optionnelles :
 - `REQUESTS_RETRY_COUNT`
 - `FFMPEG_BIN`
 - `FFPROBE_BIN`
+
+Valeurs par défaut attendues :
+
+- `CALEWOOD_API_BASE_URL=https://calewood.n0flow.io/api`
+- `CALEWOOD_API_CATEGORY=XXX`
+- `CALEWOOD_API_INCLUDE_AWAITING_FICHE=true`
+- `CALEWOOD_API_PER_PAGE=200`
 
 ## Comportement `dry-run`
 
