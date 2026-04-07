@@ -92,12 +92,20 @@ docker build --platform linux/amd64 -t movie-preview .
 
 ## Exécution
 
+Le volume monté doit correspondre en priorité au répertoire de téléchargement qBittorrent.
+
+Contrainte importante :
+
+- le chemin vu depuis le conteneur doit idéalement être exactement le même que celui renvoyé par qBittorrent,
+- autrement dit, si qBittorrent annonce un fichier sous un préfixe donné, ce même préfixe doit exister dans le conteneur,
+- le remapping `PATH_MAP_SOURCE` / `PATH_MAP_TARGET` ne doit être utilisé qu'en second choix si un montage identique est impossible.
+
 Mode sûr par défaut :
 
 ```bash
 docker run --rm --platform linux/amd64 \
   --env-file .env \
-  -v <HOST_MEDIA_ROOT>:/media:ro \
+  -v <QBITTORRENT_DOWNLOAD_ROOT>:<QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview
 ```
 
@@ -106,7 +114,7 @@ Mode actif :
 ```bash
 docker run --rm --platform linux/amd64 \
   --env-file .env \
-  -v <HOST_MEDIA_ROOT>:/media:ro \
+  -v <QBITTORRENT_DOWNLOAD_ROOT>:<QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview --just-do-it
 ```
 
@@ -156,7 +164,14 @@ qBittorrent peut renvoyer un chemin visible différemment depuis le conteneur. L
 Exemple :
 
 - chemin retourné par qBittorrent : `<SOURCE_PATH_PREFIX>/releases/movie.mkv`
-- chemin visible dans le conteneur : `/media/releases/movie.mkv`
+- chemin visible dans le conteneur, cas recommandé : `<SOURCE_PATH_PREFIX>/releases/movie.mkv`
+- chemin visible dans le conteneur, cas avec remapping : `<TARGET_PATH_PREFIX>/releases/movie.mkv`
+
+Le comportement recommandé reste :
+
+- monter le dossier de téléchargement qBittorrent avec le même chemin côté hôte et côté conteneur,
+- éviter le remapping quand ce montage identique est possible,
+- réserver `PATH_MAP_SOURCE` et `PATH_MAP_TARGET` aux environnements où cette symétrie de chemin n'est pas faisable.
 
 ## Dépendances Techniques
 
@@ -185,7 +200,7 @@ Run de vérification sans action distante :
 docker run --rm --platform linux/amd64 \
   --env-file .env \
   -e DRY_RUN=true \
-  -v <HOST_MEDIA_ROOT>:/media:ro \
+  -v <QBITTORRENT_DOWNLOAD_ROOT>:<QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview
 ```
 
@@ -194,7 +209,7 @@ Run réel avec opt-in explicite :
 ```bash
 docker run --rm --platform linux/amd64 \
   --env-file .env \
-  -v <HOST_MEDIA_ROOT>:/media:ro \
+  -v <QBITTORRENT_DOWNLOAD_ROOT>:<QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview --just-do-it
 ```
 

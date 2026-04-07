@@ -350,8 +350,14 @@ Le conteneur doit supposer que les chemins remontés par qBittorrent sont visibl
 
 Exemple :
 
-- qBittorrent retourne `/data/media/releases/movie.mkv`
-- le conteneur voit ce fichier sous `/mnt/media/releases/movie.mkv`
+- cas recommandé : qBittorrent retourne `/data/media/releases/movie.mkv` et le conteneur voit exactement `/data/media/releases/movie.mkv`
+- cas toléré avec remapping : qBittorrent retourne `<SOURCE_PATH_PREFIX>/releases/movie.mkv` et le conteneur voit `<TARGET_PATH_PREFIX>/releases/movie.mkv`
+
+Contrainte importante :
+
+- le montage Docker doit viser en priorité le répertoire de téléchargement qBittorrent,
+- le chemin côté conteneur doit idéalement être identique à celui exposé par qBittorrent,
+- le remapping `PATH_MAP_SOURCE` / `PATH_MAP_TARGET` ne doit être utilisé qu'en solution de repli.
 
 Exigences de build :
 
