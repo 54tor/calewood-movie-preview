@@ -51,7 +51,8 @@ Seuls les torrents qBittorrent complétés à `100%` sont traités. Si le torren
 - `1` fichier vidéo : il est utilisé.
 - `2` fichiers vidéo : le plus gros est utilisé.
 - `3` fichiers vidéo : le plus gros est utilisé.
-- `>3` fichiers vidéo : warning léger, le torrent est ignoré.
+- `4` à `10` fichiers vidéo : le plus gros est utilisé.
+- `>10` fichiers vidéo : warning léger, le torrent est ignoré.
 - `0` fichier vidéo : erreur.
 
 Extensions minimales prises en charge :

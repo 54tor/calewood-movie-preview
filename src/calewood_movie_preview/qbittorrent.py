@@ -49,7 +49,7 @@ class QBittorrentClient:
 
         if not files:
             raise ValueError("video_not_found")
-        if len(files) > 3:
+        if len(files) > 10:
             raise RuntimeError("too_many_video_files_warning")
         files.sort(key=lambda candidate: candidate.size, reverse=True)
         return files[0]
