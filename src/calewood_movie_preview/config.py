@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     calewood_api_single_id: int | None = Field(default=None, alias="CALEWOOD_API_SINGLE_ID")
     calewood_api_include_upload_mine: bool = Field(default=True, alias="CALEWOOD_API_INCLUDE_UPLOAD_MINE")
     calewood_api_include_my_pre_archiving: bool = Field(default=True, alias="CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING")
-    calewood_api_pre_archiving_status: str = Field(default="awaiting_fiche", alias="CALEWOOD_API_PRE_ARCHIVING_STATUS")
+    calewood_api_pre_archiving_status: str = Field(default="my-pre-archiving", alias="CALEWOOD_API_PRE_ARCHIVING_STATUS")
     calewood_api_upload_status: str = Field(default="my-uploads", alias="CALEWOOD_API_UPLOAD_STATUS")
     hash_field_name: str = Field(default="info_hash", alias="HASH_FIELD_NAME")
 

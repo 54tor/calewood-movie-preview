@@ -29,7 +29,7 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 À chaque exécution, le conteneur :
 
 1. récupère les torrents `my-archives` via `/api/archive/list`,
-2. récupère aussi les torrents `awaiting_fiche` via `/api/archive/pre-archivage/list`,
+2. récupère aussi les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
 3. récupère aussi les torrents `my-uploads` via `/api/upload/list`,
 4. fusionne les sources par `id`,
 5. lit le commentaire de chaque torrent,
@@ -165,7 +165,7 @@ Valeurs de comportement attendues :
 - `CALEWOOD_API_SINGLE_ID` vide par défaut
 - `CALEWOOD_API_INCLUDE_UPLOAD_MINE=true` par défaut
 - `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING=true` par défaut
-- `CALEWOOD_API_PRE_ARCHIVING_STATUS=awaiting_fiche` par défaut
+- `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving` par défaut
 - `CALEWOOD_API_UPLOAD_STATUS=my-uploads` par défaut
 - `CALEWOOD_API_PER_PAGE=200` par défaut
 - `HASH_FIELD_NAME=sharewood_hash` recommandé

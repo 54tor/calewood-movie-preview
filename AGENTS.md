@@ -58,7 +58,7 @@ Le projet peut utiliser un point d'entrée Python interne au conteneur, mais il 
 Pour chaque exécution :
 
 1. récupérer les torrents `my-archives` depuis `/api/archive/list`,
-2. récupérer aussi les torrents `awaiting_fiche` via `/api/archive/pre-archivage/list`,
+2. récupérer aussi les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
 3. récupérer aussi les torrents `my-uploads` via `/api/upload/list`,
 4. filtrer sur la catégorie configurée,
 5. fusionner les sources par `id`,
@@ -319,7 +319,7 @@ Valeurs par défaut attendues :
 - `CALEWOOD_API_SINGLE_ID` vide par défaut, utile pour un test ciblé,
 - `CALEWOOD_API_INCLUDE_UPLOAD_MINE=true`
 - `CALEWOOD_API_INCLUDE_MY_PRE_ARCHIVING=true`
-- `CALEWOOD_API_PRE_ARCHIVING_STATUS=awaiting_fiche`
+- `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving`
 - `CALEWOOD_API_UPLOAD_STATUS=my-uploads`
 - `CALEWOOD_API_PER_PAGE=200`
 
