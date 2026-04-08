@@ -47,7 +47,9 @@ class CalewoodApiClient:
             response.raise_for_status()
             batch, has_next = self._extract_paginated_items(response.json())
             items.extend(batch)
-            if not has_next or not batch:
+            if not batch:
+                return items
+            if not has_next and len(batch) < per_page:
                 return items
             page += 1
 
