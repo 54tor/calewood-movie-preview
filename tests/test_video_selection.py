@@ -53,3 +53,18 @@ def test_uses_save_path_for_multi_file_torrent_subfolder() -> None:
     assert candidate.path == Path(
         "/tank/rtorrent/download/Marc Dorcel Les Gros Seins De l'Infirmiere and Making Of 2013 VOF DVDRip x264 AC3-PPD/Marc Dorcel Les Gros Seins De l'Infirmiere 2013 VOF DVDRip x264 AC3-PPD.mp4"
     )
+
+
+def test_prefers_existing_content_path_variant(tmp_path: Path) -> None:
+    torrent_dir = tmp_path / "Love etc"
+    torrent_dir.mkdir()
+    real_file = torrent_dir / "Love, etc.2160p.2021.mp4"
+    real_file.write_text("x")
+    torrent = SimpleNamespace(
+        hash="abc",
+        save_path=str(tmp_path),
+        content_path=str(torrent_dir),
+    )
+    files = [SimpleNamespace(name="Love, etc.2160p.2021.mp4", size=20)]
+    candidate = _client(files).select_video(torrent)
+    assert candidate.path == real_file
