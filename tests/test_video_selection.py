@@ -53,3 +53,18 @@ def test_uses_save_path_for_multi_file_torrent_subfolder() -> None:
     assert candidate.path == Path(
         "/data/downloads/example-release-bundle/example-feature-video.mp4"
     )
+
+
+def test_prefers_existing_content_path_variant(tmp_path: Path) -> None:
+    torrent_dir = tmp_path / "example-folder"
+    torrent_dir.mkdir()
+    real_file = torrent_dir / "example-video.mp4"
+    real_file.write_text("x")
+    torrent = SimpleNamespace(
+        hash="abc",
+        save_path=str(tmp_path),
+        content_path=str(torrent_dir),
+    )
+    files = [SimpleNamespace(name="example-video.mp4", size=20)]
+    candidate = _client(files).select_video(torrent)
+    assert candidate.path == real_file

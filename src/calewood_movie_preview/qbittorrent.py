@@ -28,6 +28,12 @@ class QBittorrentClient:
                 return torrent
         return None
 
+    @staticmethod
+    def _apply_path_map(path: Path, path_map_source: str | None, path_map_target: str | None) -> Path:
+        if path_map_source and path_map_target:
+            return Path(str(path).replace(path_map_source, path_map_target, 1))
+        return path
+
     def select_video(self, torrent, path_map_source: str | None = None, path_map_target: str | None = None) -> VideoCandidate:
         files = []
         content_path = Path(str(getattr(torrent, "content_path")))
@@ -37,14 +43,21 @@ class QBittorrentClient:
             if path.suffix.lower() not in VIDEO_EXTENSIONS:
                 continue
             if path.is_absolute():
-                full_path = path
+                candidates = [path]
             elif content_path.suffix.lower() in VIDEO_EXTENSIONS:
                 # qBittorrent returns the full file path for single-file torrents.
-                full_path = content_path
+                candidates = [content_path]
             else:
-                full_path = save_path / path
-            if path_map_source and path_map_target:
-                full_path = Path(str(full_path).replace(path_map_source, path_map_target, 1))
+                candidates = [content_path / path, save_path / path]
+            resolved_candidates = []
+            seen = set()
+            for candidate_path in candidates:
+                mapped = self._apply_path_map(candidate_path, path_map_source, path_map_target)
+                if str(mapped) in seen:
+                    continue
+                seen.add(str(mapped))
+                resolved_candidates.append(mapped)
+            full_path = next((candidate for candidate in resolved_candidates if candidate.exists()), resolved_candidates[0])
             files.append(VideoCandidate(path=full_path, size=int(getattr(item, "size", 0))))
 
         if not files:
