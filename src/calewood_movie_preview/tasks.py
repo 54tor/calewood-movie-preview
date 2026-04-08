@@ -4,7 +4,7 @@ from .calewood_api import CalewoodApiClient
 from .config import Settings
 
 
-def list_pre_archiving_video(settings: Settings) -> int:
+def list_fiche(settings: Settings) -> int:
     client = CalewoodApiClient(
         settings.calewood_api_base_url,
         settings.calewood_api_token,
@@ -12,7 +12,7 @@ def list_pre_archiving_video(settings: Settings) -> int:
         settings.calewood_api_verify_tls,
     )
     items = client.list_pre_archiving_torrents(
-        status="awaiting_fiche",
+        status="my-pre-archiving",
         category="XXX",
         per_page=settings.calewood_api_per_page,
     )
