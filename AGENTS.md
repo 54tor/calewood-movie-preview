@@ -101,14 +101,15 @@ Cas à gérer :
 - si qBittorrent expose un unique fichier vidéo, le prendre,
 - si qBittorrent expose deux fichiers vidéo, prendre le plus gros,
 - si qBittorrent expose exactement trois fichiers vidéo, prendre le plus gros,
-- si qBittorrent expose plus de trois fichiers, considérer cela comme une erreur légère,
+- si qBittorrent expose entre quatre et dix fichiers vidéo, prendre le plus gros,
+- si qBittorrent expose plus de dix fichiers, considérer cela comme une erreur légère,
 - si aucun fichier vidéo n'est trouvé, considérer cela comme une erreur.
 
 Justification :
 
-- la sélection automatique ne doit être permise que pour les cas simples,
-- les cas `2` et `3` fichiers sont traités automatiquement en prenant le plus gros,
-- au-delà de `3`, la structure est considérée comme trop ambiguë pour un traitement fiable.
+- la sélection automatique ne doit être permise que pour les cas raisonnablement simples,
+- les cas de `2` à `10` fichiers sont traités automatiquement en prenant le plus gros,
+- au-delà de `10`, la structure est considérée comme trop ambiguë pour un traitement fiable.
 
 Extensions vidéo à supporter au minimum :
 

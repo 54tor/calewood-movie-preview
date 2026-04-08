@@ -30,9 +30,9 @@ def test_selects_largest_of_three() -> None:
     assert candidate.path == Path("/media/b.mkv")
 
 
-def test_more_than_three_warns() -> None:
+def test_more_than_ten_warns() -> None:
     torrent = SimpleNamespace(hash="abc", content_path="/media")
-    files = [SimpleNamespace(name=f"{idx}.mkv", size=idx) for idx in range(4)]
+    files = [SimpleNamespace(name=f"{idx}.mkv", size=idx) for idx in range(11)]
     with pytest.raises(RuntimeError):
         _client(files).select_video(torrent)
 
