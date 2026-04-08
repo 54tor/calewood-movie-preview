@@ -101,13 +101,13 @@ class CalewoodApiClient:
         if not isinstance(payload, dict):
             return [], False
 
-        items = payload.get("data", [])
+        items = payload.get("data", data.get("data", []))
         if not isinstance(items, list):
             items = []
 
-        current_page = payload.get("current_page")
-        last_page = payload.get("last_page")
-        next_page_url = payload.get("next_page_url")
+        current_page = payload.get("current_page", data.get("current_page"))
+        last_page = payload.get("last_page", data.get("last_page"))
+        next_page_url = payload.get("next_page_url", data.get("next_page_url"))
         has_next = bool(next_page_url)
         if current_page is not None and last_page is not None:
             try:
