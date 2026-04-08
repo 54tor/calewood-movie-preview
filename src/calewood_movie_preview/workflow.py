@@ -34,27 +34,11 @@ def run(settings: Settings, force_live: bool = False) -> int:
 
     exit_code = 0
     log.info("Stage 1/4: fetching CALEWOOD sources", extra={"event": "stage_fetch_sources"})
-    raw_items = calewood.list_torrents(
-        status=settings.calewood_api_list_status,
+    raw_items = calewood.list_pre_archiving_torrents(
+        status=settings.calewood_api_pre_archiving_status,
         category=settings.calewood_api_category,
         per_page=settings.calewood_api_per_page,
     )
-    if settings.calewood_api_include_my_pre_archiving:
-        raw_items.extend(
-            calewood.list_pre_archiving_torrents(
-                status=settings.calewood_api_pre_archiving_status,
-                category=settings.calewood_api_category,
-                per_page=settings.calewood_api_per_page,
-            )
-        )
-    if settings.calewood_api_include_upload_mine:
-        raw_items.extend(
-            calewood.list_upload_mine_torrents(
-                status=settings.calewood_api_upload_status,
-                category=settings.calewood_api_category,
-                per_page=settings.calewood_api_per_page,
-            )
-        )
     if settings.calewood_api_single_id is not None:
         raw_items = [raw for raw in raw_items if raw.get("id") == settings.calewood_api_single_id]
 
@@ -93,11 +77,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
             "items_fetched": len(raw_items),
             "category": settings.calewood_api_category,
             "single_id": settings.calewood_api_single_id,
-            "list_status": settings.calewood_api_list_status,
             "pre_archiving_status": settings.calewood_api_pre_archiving_status,
-            "upload_status": settings.calewood_api_upload_status,
-            "include_my_pre_archiving": settings.calewood_api_include_my_pre_archiving,
-            "include_upload_mine": settings.calewood_api_include_upload_mine,
             "archived_statuses": sorted(settings.archived_statuses()),
             "raw_status_counts": dict(raw_status_counts),
             "missing_id_or_status": missing_id_or_status,
