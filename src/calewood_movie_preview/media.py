@@ -9,13 +9,17 @@ def capture_positions() -> list[float]:
 
 
 def probe_duration(ffprobe_bin: str, video_path: Path, timeout: float = 30.0) -> float:
-    result = subprocess.run(
-        [ffprobe_bin, "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(video_path)],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
+    try:
+        result = subprocess.run(
+            [ffprobe_bin, "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(video_path)],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip()
+        raise RuntimeError(f"ffprobe_error path={video_path} stderr={stderr}") from exc
     return float(result.stdout.strip())
 
 

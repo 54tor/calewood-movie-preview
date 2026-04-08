@@ -34,6 +34,26 @@ class QBittorrentClient:
             return Path(str(path).replace(path_map_source, path_map_target, 1))
         return path
 
+    @staticmethod
+    def _find_by_filename(search_roots: list[Path], filename: str) -> Path | None:
+        for root in search_roots:
+            if not root.exists() or not root.is_dir():
+                continue
+            matches = list(root.rglob(filename))
+            if matches:
+                return matches[0]
+        return None
+
+    @staticmethod
+    def _find_largest_video_in_directory(directory: Path) -> Path | None:
+        if not directory.exists() or not directory.is_dir():
+            return None
+        candidates = [path for path in directory.rglob("*") if path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS]
+        if not candidates:
+            return None
+        candidates.sort(key=lambda path: path.stat().st_size, reverse=True)
+        return candidates[0]
+
     def select_video(self, torrent, path_map_source: str | None = None, path_map_target: str | None = None) -> VideoCandidate:
         files = []
         content_path = Path(str(getattr(torrent, "content_path")))
@@ -57,7 +77,18 @@ class QBittorrentClient:
                     continue
                 seen.add(str(mapped))
                 resolved_candidates.append(mapped)
-            full_path = next((candidate for candidate in resolved_candidates if candidate.exists()), resolved_candidates[0])
+            existing_candidate = next((candidate for candidate in resolved_candidates if candidate.exists()), None)
+            if existing_candidate is not None:
+                if existing_candidate.is_dir():
+                    full_path = self._find_largest_video_in_directory(existing_candidate) or existing_candidate
+                else:
+                    full_path = existing_candidate
+            else:
+                filename_fallback = self._find_by_filename(
+                    [self._apply_path_map(content_path, path_map_source, path_map_target), self._apply_path_map(save_path, path_map_source, path_map_target)],
+                    path.name,
+                )
+                full_path = filename_fallback or resolved_candidates[0]
             files.append(VideoCandidate(path=full_path, size=int(getattr(item, "size", 0))))
 
         if not files:

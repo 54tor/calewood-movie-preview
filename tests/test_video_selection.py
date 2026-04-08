@@ -68,3 +68,20 @@ def test_prefers_existing_content_path_variant(tmp_path: Path) -> None:
     files = [SimpleNamespace(name="example-video.mp4", size=20)]
     candidate = _client(files).select_video(torrent)
     assert candidate.path == real_file
+
+
+def test_resolves_directory_named_like_video_to_largest_inner_video(tmp_path: Path) -> None:
+    pseudo_file_dir = tmp_path / "example-video.mp4"
+    pseudo_file_dir.mkdir()
+    smaller = pseudo_file_dir / "clip-a.mp4"
+    larger = pseudo_file_dir / "clip-b.mp4"
+    smaller.write_text("a")
+    larger.write_text("b" * 20)
+    torrent = SimpleNamespace(
+        hash="abc",
+        save_path=str(tmp_path),
+        content_path=str(tmp_path),
+    )
+    files = [SimpleNamespace(name="example-video.mp4", size=20)]
+    candidate = _client(files).select_video(torrent)
+    assert candidate.path == larger

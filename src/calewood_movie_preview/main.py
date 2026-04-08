@@ -11,9 +11,12 @@ from .workflow import run
 def main() -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--just-do-it", action="store_true")
+    parser.add_argument("--single-id", type=int)
     args = parser.parse_args()
 
     settings = Settings()
+    if args.single_id is not None:
+        settings = settings.model_copy(update={"calewood_api_single_id": args.single_id})
     configure_logging(settings.log_level, settings.log_format)
     log = logging.getLogger("calewood_movie_preview.main")
     try:
