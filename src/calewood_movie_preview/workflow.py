@@ -1,15 +1,56 @@
 from __future__ import annotations
 
 import logging
+import random
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from .calewood_api import CalewoodApiClient
 from .config import Settings
 from .imgbb import ImgbbClient
-from .media import capture_frames, probe_duration
+from .media import capture_frames_at_positions, evenly_spaced_positions, midpoint_positions, probe_duration
 from .qbittorrent import QBittorrentClient
 from .utils import find_imgbb_links
+
+
+def _capture_prefix(torrent, part_index: int | None = None) -> str:
+    base = torrent.sharewood_hash or torrent.lacale_hash or str(torrent.torrent_id)
+    if part_index is None:
+        return base
+    return f"{base}_part{part_index}"
+
+
+def _build_capture_jobs(torrent, candidates: list[Any]) -> list[dict[str, object]]:
+    if len(candidates) == 1:
+        return [{"candidate": candidates[0], "positions": evenly_spaced_positions(9), "prefix": _capture_prefix(torrent)}]
+
+    if len(candidates) == 2:
+        return [
+            {"candidate": candidate, "positions": evenly_spaced_positions(9), "prefix": _capture_prefix(torrent, index)}
+            for index, candidate in enumerate(candidates, start=1)
+        ]
+
+    if len(candidates) == 3:
+        return [
+            {"candidate": candidate, "positions": evenly_spaced_positions(6), "prefix": _capture_prefix(torrent, index)}
+            for index, candidate in enumerate(candidates, start=1)
+        ]
+
+    sample_size = min(18, len(candidates) - (len(candidates) % 3))
+    if sample_size <= 0:
+        sample_size = min(3, len(candidates))
+    seed_value = torrent.sharewood_hash or torrent.lacale_hash or str(torrent.torrent_id)
+    rng = random.Random(seed_value)
+    selected = rng.sample(candidates, k=sample_size)
+    return [
+        {
+            "candidate": candidate,
+            "positions": midpoint_positions(1),
+            "prefix": _capture_prefix(torrent, index),
+        }
+        for index, candidate in enumerate(selected, start=1)
+    ]
 
 
 def run(settings: Settings, force_live: bool = False) -> int:
@@ -167,15 +208,15 @@ def run(settings: Settings, force_live: bool = False) -> int:
                 )
                 continue
 
-            candidate = qb.select_video(qb_torrent, settings.path_map_source, settings.path_map_target)
+            candidates = qb.select_videos(qb_torrent, settings.path_map_source, settings.path_map_target)
             log.info(
-                "Selected video candidate",
+                "Selected video candidates",
                 extra={
                     "event": "selected_video_candidate",
                     "qb_hash": str(getattr(qb_torrent, "hash", "")),
                     "qb_name": str(getattr(qb_torrent, "name", "")),
-                    "file_path": str(candidate.path),
-                    "file_size": candidate.size,
+                    "video_count": len(candidates),
+                    "file_paths": [str(candidate.path) for candidate in candidates],
                     **context,
                 },
             )
@@ -197,37 +238,40 @@ def run(settings: Settings, force_live: bool = False) -> int:
                 )
                 continue
             temp_dir = settings.temp_dir / str(torrent.torrent_id)
+            capture_jobs = _build_capture_jobs(torrent, candidates)
             if detailed_preflight_enabled:
-                stats["queued_for_capture"] += 1
-                stats["queued_bytes"] += candidate.size
+                stats["queued_for_capture"] += len(capture_jobs)
+                stats["queued_bytes"] += sum(int(job["candidate"].size) for job in capture_jobs)
                 planned_jobs.append(
                     {
                         "torrent": torrent,
-                        "candidate_path": candidate.path,
-                        "candidate_size": candidate.size,
+                        "capture_jobs": capture_jobs,
                         "temp_dir": temp_dir,
                         "context": context,
                     }
                 )
             else:
-                duration = probe_duration(settings.ffprobe_bin, candidate.path)
-                captures = capture_frames(
-                    settings.ffmpeg_bin,
-                    candidate.path,
-                    duration,
-                    temp_dir,
-                    settings.image_format,
-                    torrent.sharewood_hash or torrent.lacale_hash or str(torrent.torrent_id),
-                )
+                captures = []
+                for job in capture_jobs:
+                    duration = probe_duration(settings.ffprobe_bin, job["candidate"].path)
+                    captures.extend(
+                        capture_frames_at_positions(
+                            settings.ffmpeg_bin,
+                            job["candidate"].path,
+                            duration,
+                            temp_dir,
+                            settings.image_format,
+                            job["prefix"],
+                            job["positions"],
+                        )
+                    )
                 log.info(
                     "Generated capture set",
                     extra={
                         "event": "captures_generated",
                         "capture_count": len(captures),
                         "capture_dir": str(temp_dir),
-                        "duration_seconds": duration,
-                        "file_path": str(candidate.path),
-                        "file_size": candidate.size,
+                        "video_count": len(candidates),
                         **context,
                     },
                 )
@@ -239,8 +283,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
                             "event": "dry_run_no_remote_write",
                             "capture_count": len(captures),
                             "capture_dir": str(temp_dir),
-                            "file_path": str(candidate.path),
-                            "file_size": candidate.size,
+                            "video_count": len(candidates),
                             **context,
                         },
                     )
@@ -296,29 +339,31 @@ def run(settings: Settings, force_live: bool = False) -> int:
 
         for job in planned_jobs:
             torrent = job["torrent"]
-            candidate_path = job["candidate_path"]
-            candidate_size = job["candidate_size"]
+            capture_jobs = job["capture_jobs"]
             temp_dir = job["temp_dir"]
             context = job["context"]
             try:
-                duration = probe_duration(settings.ffprobe_bin, candidate_path)
-                captures = capture_frames(
-                    settings.ffmpeg_bin,
-                    candidate_path,
-                    duration,
-                    temp_dir,
-                    settings.image_format,
-                    torrent.sharewood_hash or torrent.lacale_hash or str(torrent.torrent_id),
-                )
+                captures = []
+                for capture_job in capture_jobs:
+                    duration = probe_duration(settings.ffprobe_bin, capture_job["candidate"].path)
+                    captures.extend(
+                        capture_frames_at_positions(
+                            settings.ffmpeg_bin,
+                            capture_job["candidate"].path,
+                            duration,
+                            temp_dir,
+                            settings.image_format,
+                            capture_job["prefix"],
+                            capture_job["positions"],
+                        )
+                    )
                 log.info(
                     "Generated capture set",
                     extra={
                         "event": "captures_generated",
                         "capture_count": len(captures),
                         "capture_dir": str(temp_dir),
-                        "duration_seconds": duration,
-                        "file_path": str(candidate_path),
-                        "file_size": candidate_size,
+                        "video_count": len(capture_jobs),
                         **context,
                     },
                 )
@@ -330,8 +375,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
                             "event": "dry_run_no_remote_write",
                             "capture_count": len(captures),
                             "capture_dir": str(temp_dir),
-                            "file_path": str(candidate_path),
-                            "file_size": candidate_size,
+                            "video_count": len(capture_jobs),
                             **context,
                         },
                     )

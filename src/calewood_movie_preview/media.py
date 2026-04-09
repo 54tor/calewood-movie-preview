@@ -4,8 +4,18 @@ import subprocess
 from pathlib import Path
 
 
+def evenly_spaced_positions(count: int) -> list[float]:
+    if count <= 0:
+        return []
+    return [index / (count + 1) for index in range(1, count + 1)]
+
+
 def capture_positions() -> list[float]:
-    return [index / 10 for index in range(1, 10)]
+    return evenly_spaced_positions(9)
+
+
+def midpoint_positions(count: int) -> list[float]:
+    return [0.5] * count
 
 
 def probe_duration(ffprobe_bin: str, video_path: Path, timeout: float = 30.0) -> float:
@@ -32,9 +42,31 @@ def capture_frames(
     filename_prefix: str,
     timeout: float = 30.0,
 ) -> list[Path]:
+    return capture_frames_at_positions(
+        ffmpeg_bin,
+        video_path,
+        duration,
+        output_dir,
+        image_format,
+        filename_prefix,
+        capture_positions(),
+        timeout,
+    )
+
+
+def capture_frames_at_positions(
+    ffmpeg_bin: str,
+    video_path: Path,
+    duration: float,
+    output_dir: Path,
+    image_format: str,
+    filename_prefix: str,
+    positions: list[float],
+    timeout: float = 30.0,
+) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     files: list[Path] = []
-    for idx, ratio in enumerate(capture_positions(), start=1):
+    for idx, ratio in enumerate(positions, start=1):
         timestamp = duration * ratio
         output = output_dir / f"{filename_prefix}_{idx:02d}.{image_format}"
         subprocess.run(
