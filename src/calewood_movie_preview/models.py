@@ -18,3 +18,4 @@ class CalewoodTorrent:
 class VideoCandidate:
     path: Path
     size: int
+    relative_name: str | None = None

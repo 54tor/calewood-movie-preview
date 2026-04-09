@@ -54,13 +54,15 @@ class QBittorrentClient:
         candidates.sort(key=lambda path: path.stat().st_size, reverse=True)
         return candidates[0]
 
-    def select_video(self, torrent, path_map_source: str | None = None, path_map_target: str | None = None) -> VideoCandidate:
+    def select_videos(self, torrent, path_map_source: str | None = None, path_map_target: str | None = None) -> list[VideoCandidate]:
         files = []
         content_path = Path(str(getattr(torrent, "content_path")))
         save_path = Path(str(getattr(torrent, "save_path", content_path.parent)))
         for item in self._client.torrents_files(torrent_hash=torrent.hash):
             path = Path(getattr(item, "name"))
             if path.suffix.lower() not in VIDEO_EXTENSIONS:
+                continue
+            if "bonus" in path.name.lower():
                 continue
             if path.is_absolute():
                 candidates = [path]
@@ -89,11 +91,9 @@ class QBittorrentClient:
                     path.name,
                 )
                 full_path = filename_fallback or resolved_candidates[0]
-            files.append(VideoCandidate(path=full_path, size=int(getattr(item, "size", 0))))
+            files.append(VideoCandidate(path=full_path, size=int(getattr(item, "size", 0)), relative_name=str(path)))
 
         if not files:
             raise ValueError("video_not_found")
-        if len(files) > 10:
-            raise RuntimeError("too_many_video_files_warning")
         files.sort(key=lambda candidate: candidate.size, reverse=True)
-        return files[0]
+        return files
