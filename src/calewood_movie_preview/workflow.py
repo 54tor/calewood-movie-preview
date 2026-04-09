@@ -53,6 +53,14 @@ def _build_capture_jobs(torrent, candidates: list[Any]) -> list[dict[str, object
     ]
 
 
+def _build_prepended_comment(urls: list[str], existing_comment: str) -> str:
+    existing_comment = existing_comment.strip()
+    urls_block = "\n".join(urls)
+    if not existing_comment:
+        return urls_block
+    return f"{urls_block}\n\n{existing_comment}"
+
+
 def run(settings: Settings, force_live: bool = False) -> int:
     log = logging.getLogger("calewood_movie_preview.workflow")
     dry_run = settings.dry_run and not force_live
@@ -299,11 +307,11 @@ def run(settings: Settings, force_live: bool = False) -> int:
                         **context,
                     },
                 )
-                calewood.post_comment(torrent.torrent_id, "\n".join(urls))
+                calewood.post_comment(torrent.torrent_id, _build_prepended_comment(urls, comment))
                 stats["processed"] += 1
                 log.info(
                     "Posted comment to CALEWOOD_API",
-                    extra={"event": "comment_posted", "posted_link_count": len(urls), **context},
+                    extra={"event": "comment_posted", "posted_link_count": len(urls), "prepended_to_existing_comment": bool(comment.strip()), **context},
                 )
         except RuntimeError as exc:
             if str(exc) == "too_many_video_files_warning":
@@ -391,11 +399,11 @@ def run(settings: Settings, force_live: bool = False) -> int:
                         **context,
                     },
                 )
-                calewood.post_comment(torrent.torrent_id, "\n".join(urls))
+                calewood.post_comment(torrent.torrent_id, _build_prepended_comment(urls, comment))
                 stats["processed"] += 1
                 log.info(
                     "Posted comment to CALEWOOD_API",
-                    extra={"event": "comment_posted", "posted_link_count": len(urls), **context},
+                    extra={"event": "comment_posted", "posted_link_count": len(urls), "prepended_to_existing_comment": bool(comment.strip()), **context},
                 )
             except Exception as exc:
                 stats["errors"] += 1
