@@ -5,14 +5,13 @@
 Construire un outil exécutable dans une image Docker qui :
 
 1. interroge une API tracker privée nommée ici `CALEWOOD_API`,
-2. récupère les torrents dans l'état `prearchived` ou `archived`,
-3. lit le commentaire de chaque torrent,
-4. ignore tout torrent dont le commentaire contient déjà au moins un lien `imgbb`,
-5. retrouve le torrent correspondant dans qBittorrent via un hash de correspondance,
-6. localise le fichier vidéo sur disque,
-7. génère 9 captures aux positions `10%`, `20%`, `30%`, `40%`, `50%`, `60%`, `70%`, `80%`, `90%` de la durée totale,
-8. envoie ces 9 images vers `IMGBB_API`,
-9. publie les 9 URLs en commentaire sur le torrent concerné, une URL par ligne.
+2. récupère les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
+3. ignore tout torrent dont le commentaire contient déjà au moins un lien `imgbb`,
+4. retrouve le torrent correspondant dans qBittorrent via un hash de correspondance,
+5. localise les fichiers vidéo sur disque (exclusion des fichiers `Bonus`),
+6. génère un nombre de captures multiple de `3` (max `27`) selon l'algorithme défini,
+7. envoie ces images vers `IMGBB_API` (avec `album_id` si configuré),
+8. publie les URLs en commentaire sur le torrent concerné en les préfixant au commentaire existant.
 
 Le projet doit rester anonyme à 100%.
 
@@ -29,6 +28,7 @@ Utiliser uniquement des noms génériques :
 - `QBITTORRENT_USERNAME`
 - `QBITTORRENT_PASSWORD`
 - `IMGBB_API_KEY`
+- `IMGBB_ALBUM_ID`
 - `HASH_FIELD_NAME`
 
 Interdictions :
@@ -59,19 +59,18 @@ Pour chaque exécution :
 
 1. récupérer les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
 2. filtrer sur la catégorie configurée,
-3. charger le commentaire de chaque torrent,
-4. détecter la présence d'au moins un lien `imgbb` dans le commentaire,
-5. si un lien `imgbb` existe déjà, marquer le torrent comme `skipped_already_has_preview`,
-6. sinon, récupérer le hash de correspondance côté tracker,
-7. se connecter à qBittorrent Web API,
-8. retrouver le torrent qBittorrent correspondant à ce hash,
-9. déterminer le chemin du contenu,
-10. identifier le bon fichier vidéo,
-11. calculer la durée totale,
-12. extraire 9 captures,
-13. uploader les captures sur `IMGBB_API`,
-14. poster un commentaire avec les 9 URLs, une par ligne,
-15. journaliser le résultat.
+3. récupérer le hash de correspondance côté tracker,
+4. se connecter à qBittorrent Web API,
+5. retrouver le torrent qBittorrent correspondant à ce hash,
+6. déterminer les fichiers vidéo éligibles,
+7. charger le commentaire uniquement pour les candidats réellement traitables,
+8. détecter la présence d'au moins un lien `imgbb` dans le commentaire,
+9. si un lien `imgbb` existe déjà, marquer le torrent comme `skipped_already_has_preview`,
+10. sinon, calculer la durée totale,
+11. extraire les captures selon l'algorithme multiple de `3`,
+12. uploader les captures sur `IMGBB_API`,
+13. poster un commentaire avec les URLs en préfixant l'ancien commentaire,
+14. journaliser le résultat.
 
 ## Correspondance avec qBittorrent
 
@@ -82,6 +81,11 @@ Le hash utilisé pour retrouver le torrent doit provenir d'un champ configurable
 - si le hash est absent, journaliser `missing_source_hash` et passer au torrent suivant.
 
 Comparer les hashes de manière insensible à la casse.
+
+Ordre de recherche du hash :
+
+1. `sharewood_hash`
+2. `lacale_hash` (fallback)
 
 ## Résolution du fichier vidéo
 
@@ -95,18 +99,9 @@ Règle :
 
 Cas à gérer :
 
-- si qBittorrent expose un unique fichier vidéo, le prendre,
-- si qBittorrent expose deux fichiers vidéo, prendre le plus gros,
-- si qBittorrent expose exactement trois fichiers vidéo, prendre le plus gros,
-- si qBittorrent expose entre quatre et dix fichiers vidéo, prendre le plus gros,
-- si qBittorrent expose plus de dix fichiers, considérer cela comme une erreur légère,
+- ne conserver que les fichiers vidéo,
+- exclure les fichiers dont le nom contient `Bonus` (insensible à la casse),
 - si aucun fichier vidéo n'est trouvé, considérer cela comme une erreur.
-
-Justification :
-
-- la sélection automatique ne doit être permise que pour les cas raisonnablement simples,
-- les cas de `2` à `10` fichiers sont traités automatiquement en prenant le plus gros,
-- au-delà de `10`, la structure est considérée comme trop ambiguë pour un traitement fiable.
 
 Extensions vidéo à supporter au minimum :
 
@@ -125,13 +120,20 @@ Utiliser `ffprobe` pour obtenir la durée et `ffmpeg` pour extraire les frames.
 
 Contraintes :
 
-- 9 captures exactement,
-- positions fixes : `10%`, `20%`, `30%`, `40%`, `50%`, `60%`, `70%`, `80%`, `90%`,
+- le nombre total de captures doit être un multiple de `3`,
+- maximum `27` captures,
 - ignorer `0%` et `100%`,
 - nommage temporaire déterministe,
 - nettoyage systématique des fichiers temporaires,
 - format image : `jpg` ou `png`, configurable, avec `jpg` par défaut,
 - qualité raisonnable pour limiter la taille d'upload.
+
+Algorithme de répartition :
+
+- `1` vidéo : `9` captures réparties sur la durée,
+- `2` vidéos : `9` captures par vidéo (total `18`),
+- `3` vidéos : `6` captures par vidéo (total `18`),
+- `>3` vidéos : sélectionner `18` vidéos aléatoirement (tirage déterministe par hash) et capturer 1 image au milieu de chaque vidéo.
 
 Exigences techniques :
 
@@ -146,29 +148,28 @@ L'upload se fait par requête HTTP à `IMGBB_API`.
 
 Contraintes :
 
-- uploader les 9 images individuellement,
+- uploader chaque image individuellement,
 - récupérer l'URL publique finale de chaque image,
 - conserver l'ordre des timestamps dans le commentaire final,
 - si un upload échoue, ne pas poster de commentaire partiel,
 - en cas d'échec partiel, journaliser et passer au torrent suivant.
 
+Si `IMGBB_ALBUM_ID` est défini, il doit être passé à l'API.
+
 ## Publication du commentaire
 
-Le commentaire publié sur le torrent doit contenir strictement les URLs, une par ligne :
+Le commentaire publié sur le torrent doit contenir les URLs, une par ligne, puis le commentaire existant :
 
 ```text
 https://...
 https://...
 https://...
-https://...
-https://...
-https://...
-https://...
-https://...
-https://...
+...
+
+<commentaire existant>
 ```
 
-Le commentaire publié remplace entièrement l'ancien commentaire. Il ne doit jamais être concaténé ni enrichi avec du texte additionnel.
+Le commentaire publié doit préfixer les nouvelles URLs au commentaire existant, sans ajouter d'autre texte.
 
 ## Idempotence
 
@@ -205,7 +206,6 @@ Catégories d'erreur minimales :
 - `qb_auth_error`
 - `qb_torrent_not_found`
 - `video_not_found`
-- `too_many_video_files_warning`
 - `ffprobe_error`
 - `ffmpeg_error`
 - `imgbb_upload_error`
@@ -213,11 +213,7 @@ Catégories d'erreur minimales :
 
 Le code de sortie global doit être non nul si au moins une erreur technique bloquante survient pendant le run, même si certains torrents ont été traités avec succès.
 
-`too_many_video_files_warning` est une erreur légère :
-
-- elle doit être journalisée,
-- le torrent courant est ignoré,
-- elle ne doit pas à elle seule rendre le code de sortie global non nul.
+La sélection d'un sous-ensemble aléatoire de vidéos pour `>3` fichiers ne doit pas être considérée comme une erreur.
 
 `partial_imgbb_links_warning` est aussi un warning léger :
 
@@ -293,6 +289,7 @@ Variables d'environnement minimales :
 - `QBITTORRENT_TIMEOUT_SECONDS`
 - `QBITTORRENT_VERIFY_TLS`
 - `IMGBB_API_KEY`
+- `IMGBB_ALBUM_ID`
 - `IMGBB_TIMEOUT_SECONDS`
 - `IMAGE_FORMAT`
 - `DRY_RUN`
@@ -313,6 +310,7 @@ Valeurs par défaut attendues :
 - `CALEWOOD_API_SINGLE_ID` vide par défaut, utile pour un test ciblé,
 - `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving`
 - `CALEWOOD_API_PER_PAGE=200`
+- `IMGBB_ALBUM_ID=ymNBDj`
 
 ## Comportement `dry-run`
 
@@ -410,14 +408,15 @@ Le parser doit aussi compter le nombre de liens `imgbb` détectés :
 
 1. détection de lien imgbb dans un commentaire,
 2. warning si le commentaire contient entre `1` et `8` liens imgbb,
-3. calcul exact des 9 timestamps,
-4. sélection du plus gros fichier quand il y a 2 vidéos,
-5. sélection du plus gros fichier quand il y a 3 vidéos,
-6. warning léger quand il y a plus de 3 vidéos,
-7. erreur quand aucun hash tracker n'est présent,
-8. `dry-run` ne poste rien,
-9. pas de commentaire posté si un seul upload échoue,
-10. émission d'un log de réparation manuelle si des captures ou uploads partiels existent sans commentaire final.
+3. calcul exact des timestamps pour 9 captures,
+4. exclusion des fichiers `Bonus`,
+5. répartition 2 vidéos = 18 captures (9 par vidéo),
+6. répartition 3 vidéos = 18 captures (6 par vidéo),
+7. sélection déterministe de 18 vidéos quand il y en a plus de 3,
+8. erreur quand aucun hash tracker n'est présent,
+9. `dry-run` ne poste rien,
+10. pas de commentaire posté si un seul upload échoue,
+11. émission d'un log de réparation manuelle si des captures ou uploads partiels existent sans commentaire final.
 
 ## Critères d'acceptation
 
@@ -427,7 +426,7 @@ Le travail est acceptable si :
 2. le conteneur démarre et valide sa configuration,
 3. le workflow complet est découpé en modules testables,
 4. les secrets sont exclusivement injectés par environnement,
-5. les 9 captures sont produites aux bons pourcentages,
+5. le nombre de captures est un multiple de `3` et ne dépasse pas `27`,
 6. aucun commentaire n'est posté s'il existe déjà un lien imgbb,
 7. aucun commentaire partiel n'est posté,
 8. la doc et le code restent totalement anonymes.
@@ -452,8 +451,8 @@ Ordre de travail :
 
 - ne pas inventer des endpoints finaux sans les isoler derrière des placeholders configurables,
 - ne pas utiliser de SDK non nécessaire si une API HTTP simple suffit,
-- ne pas contourner la règle des 9 captures,
-- ne pas poster de commentaire si les 9 URLs ne sont pas disponibles,
+- ne pas contourner la règle des captures multiples de `3`,
+- ne pas poster de commentaire si les URLs ne sont pas toutes disponibles,
 - ne pas modifier le comportement demandé sur le cas des multiples fichiers,
 - ne pas stocker de cache persistant par défaut,
 - ne pas introduire de télémétrie.
