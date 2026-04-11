@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     calewood_api_per_page: int = Field(default=200, alias="CALEWOOD_API_PER_PAGE")
     calewood_api_single_id: int | None = Field(default=None, alias="CALEWOOD_API_SINGLE_ID")
     calewood_api_pre_archiving_status: str = Field(default="my-pre-archiving", alias="CALEWOOD_API_PRE_ARCHIVING_STATUS")
+    calewood_api_archiving_status: str = Field(default="my-archiving", alias="CALEWOOD_API_ARCHIVING_STATUS")
     hash_field_name: str = Field(default="info_hash", alias="HASH_FIELD_NAME")
 
     qbittorrent_base_url: str = Field(alias="QBITTORRENT_BASE_URL")

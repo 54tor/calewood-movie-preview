@@ -61,7 +61,7 @@ def _build_prepended_comment(urls: list[str], existing_comment: str) -> str:
     return f"{urls_block}\n\n{existing_comment}"
 
 
-def run(settings: Settings, force_live: bool = False) -> int:
+def run(settings: Settings, force_live: bool = False, force_id: int | None = None, force_hash: str | None = None) -> int:
     log = logging.getLogger("calewood_movie_preview.workflow")
     dry_run = settings.dry_run and not force_live
 
@@ -83,11 +83,20 @@ def run(settings: Settings, force_live: bool = False) -> int:
 
     exit_code = 0
     log.info("Stage 1/4: fetching CALEWOOD sources", extra={"event": "stage_fetch_sources"})
-    raw_items = calewood.list_pre_archiving_torrents(
-        status=settings.calewood_api_pre_archiving_status,
-        category=settings.calewood_api_category,
-        per_page=settings.calewood_api_per_page,
-    )
+    force_mode = force_id is not None and force_hash is not None
+    if force_mode:
+        raw_items = [{"id": force_id, "status": "forced", "sharewood_hash": force_hash}]
+    else:
+        raw_items = calewood.list_pre_archiving_torrents(
+            status=settings.calewood_api_pre_archiving_status,
+            category=settings.calewood_api_category,
+            per_page=settings.calewood_api_per_page,
+        )
+        raw_items += calewood.list_torrents(
+            status=settings.calewood_api_archiving_status,
+            category=settings.calewood_api_category,
+            per_page=settings.calewood_api_per_page,
+        )
     if settings.calewood_api_single_id is not None:
         raw_items = [raw for raw in raw_items if raw.get("id") == settings.calewood_api_single_id]
 
@@ -153,7 +162,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
         )
     for raw in raw_items:
         torrent = calewood.to_model(raw, settings.hash_field_name)
-        if torrent is None or torrent.status not in settings.archived_statuses():
+        if torrent is None or (not force_mode and torrent.status not in settings.archived_statuses()):
             continue
         if torrent.torrent_id in seen_ids:
             continue

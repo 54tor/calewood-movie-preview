@@ -29,18 +29,19 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 À chaque exécution, le conteneur :
 
 1. récupère les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
-2. filtre en `cat=XXX`,
-3. récupère le hash de correspondance depuis `CALEWOOD_API`,
-4. interroge qBittorrent,
-5. sélectionne les fichiers vidéo éligibles,
-6. lit le commentaire uniquement pour les candidats traitables,
-7. détecte les liens `imgbb.com` et `i.ibb.co`,
-8. skippe les torrents déjà illustrés,
-9. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
-10. calcule la durée avec `ffprobe`,
-11. extrait les captures avec `ffmpeg`,
-12. upload les captures sur imgbb,
-13. poste les URLs en préfixe du commentaire du torrent.
+2. récupère les torrents `my-archiving` via `/api/archive/list`,
+3. filtre en `cat=XXX`,
+4. récupère le hash de correspondance depuis `CALEWOOD_API`,
+5. interroge qBittorrent,
+6. sélectionne les fichiers vidéo éligibles,
+7. lit le commentaire uniquement pour les candidats traitables,
+8. détecte les liens `imgbb.com` et `i.ibb.co`,
+9. skippe les torrents déjà illustrés,
+10. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
+11. calcule la durée avec `ffprobe`,
+12. extrait les captures avec `ffmpeg`,
+13. upload les captures sur imgbb,
+14. poste les URLs en préfixe du commentaire du torrent.
 
 ## Règles De Sélection Vidéo
 
@@ -137,6 +138,7 @@ Variables minimales :
 - `CALEWOOD_API_ARCHIVED_STATUSES`
 - `CALEWOOD_API_CATEGORY`
 - `CALEWOOD_API_PRE_ARCHIVING_STATUS`
+- `CALEWOOD_API_ARCHIVING_STATUS`
 - `CALEWOOD_API_SINGLE_ID`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
@@ -167,6 +169,7 @@ Valeurs de comportement attendues :
 - `CALEWOOD_API_CATEGORY=XXX` par défaut
 - `CALEWOOD_API_SINGLE_ID` vide par défaut
 - `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving` par défaut
+- `CALEWOOD_API_ARCHIVING_STATUS=my-archiving` par défaut
 - `CALEWOOD_API_PER_PAGE=200` par défaut
 - `HASH_FIELD_NAME=sharewood_hash` recommandé
 - `DRY_RUN=true` par défaut
@@ -232,6 +235,19 @@ docker run --rm --platform linux/amd64 \
   -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
   movie-preview --just-do-it
 ```
+
+### Forcer Un ID/Hash
+
+Pour cibler un torrent unique en forçant l'ID CALEWOOD et le hash qBittorrent :
+
+```bash
+docker run --rm --platform linux/amd64 \
+  --env-file .env \
+  -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
+  movie-preview --force-id 12345 --force-hash deadbeef...
+```
+
+Les deux options `--force-id` et `--force-hash` sont obligatoires et doivent être fournies ensemble.
 
 ## Fichier Env
 

@@ -13,6 +13,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--just-do-it", action="store_true")
     parser.add_argument("--single-id", type=int)
+    parser.add_argument("--force-id", type=int)
+    parser.add_argument("--force-hash", type=str)
     parser.add_argument("--list-fiche", action="store_true")
     args = parser.parse_args()
 
@@ -24,7 +26,14 @@ def main() -> int:
         return list_fiche(settings)
     log = logging.getLogger("calewood_movie_preview.main")
     try:
-        return run(settings, force_live=args.just_do_it)
+        if (args.force_id is None) != (args.force_hash is None):
+            raise SystemExit("--force-id and --force-hash must be provided together")
+        return run(
+            settings,
+            force_live=args.just_do_it,
+            force_id=args.force_id,
+            force_hash=args.force_hash,
+        )
     except KeyboardInterrupt:
         log.warning(
             "Keyboard interrupt received, stopping execution",
