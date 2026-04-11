@@ -95,7 +95,7 @@ Ce log doit permettre d'identifier :
 ## Build
 
 ```bash
-docker build --platform linux/amd64 -t movie-preview .
+docker build --platform linux/amd64 -t sat0r/calewood-movie-preview .
 ```
 
 ## Exécution
@@ -115,7 +115,7 @@ Mode sûr par défaut :
 docker run --rm --platform linux/amd64 \
   --env-file .env \
   -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
-  movie-preview
+  sat0r/calewood-movie-preview
 ```
 
 Mode actif :
@@ -124,7 +124,7 @@ Mode actif :
 docker run --rm --platform linux/amd64 \
   --env-file .env \
   -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
-  movie-preview --just-do-it
+  sat0r/calewood-movie-preview --just-do-it
 ```
 
 ## Variables D'Environnement
@@ -224,7 +224,7 @@ docker run --rm --platform linux/amd64 \
   --env-file .env \
   -e DRY_RUN=true \
   -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
-  movie-preview
+  sat0r/calewood-movie-preview
 ```
 
 Run réel avec opt-in explicite :
@@ -233,7 +233,7 @@ Run réel avec opt-in explicite :
 docker run --rm --platform linux/amd64 \
   --env-file .env \
   -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
-  movie-preview --just-do-it
+  sat0r/calewood-movie-preview --just-do-it
 ```
 
 ### Forcer Un ID/Hash
@@ -244,7 +244,7 @@ Pour cibler un torrent unique en forçant l'ID CALEWOOD et le hash qBittorrent :
 docker run --rm --platform linux/amd64 \
   --env-file .env \
   -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
-  movie-preview --force-id 12345 --force-hash deadbeef...
+  sat0r/calewood-movie-preview --force-id 12345 --force-hash deadbeef...
 ```
 
 Les deux options `--force-id` et `--force-hash` sont obligatoires et doivent être fournies ensemble.
