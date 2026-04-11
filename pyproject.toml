@@ -19,6 +19,9 @@ dev = [
   "pytest>=8.2,<9",
 ]
 
+[project.scripts]
+calewood-movie-preview = "calewood_movie_preview.main:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 

@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir .
 
 USER docker-user
 
-ENTRYPOINT ["python", "-m", "calewood_movie_preview.main"]
+ENTRYPOINT ["calewood-movie-preview"]
