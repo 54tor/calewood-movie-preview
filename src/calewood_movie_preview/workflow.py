@@ -79,7 +79,7 @@ def run(settings: Settings, force_live: bool = False) -> int:
         settings.qbittorrent_timeout_seconds,
     )
     qb.login()
-    imgbb = ImgbbClient(settings.imgbb_api_key, settings.imgbb_timeout_seconds)
+    imgbb = ImgbbClient(settings.imgbb_api_key, settings.imgbb_timeout_seconds, settings.imgbb_album_id)
 
     exit_code = 0
     log.info("Stage 1/4: fetching CALEWOOD sources", extra={"event": "stage_fetch_sources"})

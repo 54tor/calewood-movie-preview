@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     qbittorrent_verify_tls: bool = Field(default=True, alias="QBITTORRENT_VERIFY_TLS")
 
     imgbb_api_key: str = Field(alias="IMGBB_API_KEY")
+    imgbb_album_id: str | None = Field(default="ymNBDj", alias="IMGBB_ALBUM_ID")
     imgbb_timeout_seconds: float = Field(default=30.0, alias="IMGBB_TIMEOUT_SECONDS")
 
     image_format: str = Field(default="jpg", alias="IMAGE_FORMAT")

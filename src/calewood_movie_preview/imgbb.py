@@ -7,13 +7,17 @@ import httpx
 
 
 class ImgbbClient:
-    def __init__(self, api_key: str, timeout: float) -> None:
+    def __init__(self, api_key: str, timeout: float, album_id: str | None = None) -> None:
         self._client = httpx.Client(timeout=timeout)
         self._api_key = api_key
+        self._album_id = album_id
 
     def upload(self, path: Path) -> str:
         encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-        response = self._client.post("https://api.imgbb.com/1/upload", data={"key": self._api_key, "image": encoded})
+        payload = {"key": self._api_key, "image": encoded}
+        if self._album_id:
+            payload["album_id"] = self._album_id
+        response = self._client.post("https://api.imgbb.com/1/upload", data=payload)
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
