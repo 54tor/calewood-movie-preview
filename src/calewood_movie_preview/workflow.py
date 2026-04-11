@@ -61,6 +61,12 @@ def _build_prepended_comment(urls: list[str], existing_comment: str) -> str:
     return f"{urls_block}\n\n{existing_comment}"
 
 
+def _ensure_capture_files_exist(captures: list[Path]) -> None:
+    missing = [str(path) for path in captures if not path.exists()]
+    if missing:
+        raise RuntimeError(f"capture_files_missing count={len(missing)} files={missing}")
+
+
 def run(settings: Settings, force_live: bool = False, force_id: int | None = None, force_hash: str | None = None) -> int:
     log = logging.getLogger("calewood_movie_preview.workflow")
     dry_run = settings.dry_run and not force_live
@@ -292,6 +298,7 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
                         **context,
                     },
                 )
+                _ensure_capture_files_exist(captures)
                 if dry_run:
                     stats["processed"] += 1
                     log.info(
@@ -384,6 +391,7 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
                         **context,
                     },
                 )
+                _ensure_capture_files_exist(captures)
                 if dry_run:
                     stats["processed"] += 1
                     log.info(

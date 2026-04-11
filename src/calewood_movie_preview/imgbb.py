@@ -13,7 +13,10 @@ class ImgbbClient:
         self._album_id = album_id
 
     def upload(self, path: Path) -> str:
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        try:
+            encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        except FileNotFoundError as exc:
+            raise RuntimeError(f"imgbb_upload_missing_file path={path}") from exc
         payload = {"key": self._api_key, "image": encoded}
         if self._album_id:
             payload["album_id"] = self._album_id
