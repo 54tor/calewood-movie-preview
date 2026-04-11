@@ -1,16 +1,16 @@
 # calewood-movie-preview
 
-`calewood-movie-preview` est une image Docker `linux/amd64` qui automatise la génération de previews vidéo pour des torrents archivés ou préarchivés.
+`calewood-movie-preview` est une image Docker `linux/amd64` qui automatise la génération de previews vidéo pour des torrents en pré-archivage.
 
 Le conteneur :
 
 - lit les torrents éligibles depuis `CALEWOOD_API`,
 - vérifie si le commentaire contient déjà des liens `imgbb`,
 - retrouve le torrent correspondant dans qBittorrent avec le package Python officiel `qbittorrent-api`,
-- localise le bon fichier vidéo,
-- génère 9 captures à `10%`, `20%`, `30%`, `40%`, `50%`, `60%`, `70%`, `80%`, `90%`,
-- envoie les images sur `IMGBB_API`,
-- poste ensuite les 9 URLs dans le commentaire du torrent, une URL par ligne.
+- localise les fichiers vidéo éligibles (exclusion des fichiers `Bonus`),
+- génère un nombre de captures multiple de `3` (max `27`),
+- envoie les images sur `IMGBB_API` (avec `album_id` si configuré),
+- poste ensuite les URLs en préfixe du commentaire existant, une URL par ligne.
 
 ## Sécurité Par Défaut
 
@@ -30,28 +30,25 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 
 1. récupère les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list`,
 2. filtre en `cat=XXX`,
-3. lit le commentaire de chaque torrent,
-4. détecte les liens `imgbb.com` et `i.ibb.co`,
-5. skippe les torrents déjà illustrés,
-6. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
-7. récupère le hash de correspondance depuis `CALEWOOD_API`,
-8. interroge qBittorrent,
-9. sélectionne le bon fichier vidéo,
+3. récupère le hash de correspondance depuis `CALEWOOD_API`,
+4. interroge qBittorrent,
+5. sélectionne les fichiers vidéo éligibles,
+6. lit le commentaire uniquement pour les candidats traitables,
+7. détecte les liens `imgbb.com` et `i.ibb.co`,
+8. skippe les torrents déjà illustrés,
+9. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
 10. calcule la durée avec `ffprobe`,
-11. extrait 9 captures avec `ffmpeg`,
+11. extrait les captures avec `ffmpeg`,
 12. upload les captures sur imgbb,
-13. poste les 9 URLs dans le commentaire du torrent.
+13. poste les URLs en préfixe du commentaire du torrent.
 
 ## Règles De Sélection Vidéo
 
 Seuls les torrents qBittorrent complétés à `100%` sont traités. Si le torrent n'est pas terminé, il est ignoré avant toute sélection de fichier.
 
-- `1` fichier vidéo : il est utilisé.
-- `2` fichiers vidéo : le plus gros est utilisé.
-- `3` fichiers vidéo : le plus gros est utilisé.
-- `4` à `10` fichiers vidéo : le plus gros est utilisé.
-- `>10` fichiers vidéo : warning léger, le torrent est ignoré.
-- `0` fichier vidéo : erreur.
+- seuls les fichiers vidéo sont conservés,
+- les fichiers dont le nom contient `Bonus` sont exclus,
+- si aucun fichier vidéo n'est trouvé : erreur.
 
 Extensions minimales prises en charge :
 
@@ -62,13 +59,23 @@ Extensions minimales prises en charge :
 - `.m4v`
 - `.ts`
 
+## Génération Des Captures
+
+- le nombre total de captures est un multiple de `3`,
+- maximum `27` captures,
+- `1` vidéo : `9` captures réparties,
+- `2` vidéos : `9` captures par vidéo (total `18`),
+- `3` vidéos : `6` captures par vidéo (total `18`),
+- `>3` vidéos : sélection déterministe de `18` vidéos aléatoires, 1 capture au milieu de chacune.
+
 ## Comportement Sur Les Commentaires
 
 - `0` lien imgbb détecté : le torrent reste éligible.
 - `1` à `8` liens imgbb détectés : warning `partial_imgbb_links_warning`, pas de repost automatique.
 - `9` liens imgbb ou plus : le torrent est considéré comme déjà illustré.
 
-Le commentaire publié doit contenir uniquement les 9 URLs, une par ligne.
+Le commentaire publié contient les nouvelles URLs en préfixe, puis le commentaire existant.
+Si aucun commentaire n’existe, seules les URLs sont publiées.
 
 ## Réparation Manuelle
 
@@ -138,6 +145,7 @@ Variables minimales :
 - `QBITTORRENT_TIMEOUT_SECONDS`
 - `QBITTORRENT_VERIFY_TLS`
 - `IMGBB_API_KEY`
+- `IMGBB_ALBUM_ID`
 - `IMGBB_TIMEOUT_SECONDS`
 - `IMAGE_FORMAT`
 - `DRY_RUN`
@@ -163,6 +171,7 @@ Valeurs de comportement attendues :
 - `HASH_FIELD_NAME=sharewood_hash` recommandé
 - `DRY_RUN=true` par défaut
 - `IMAGE_FORMAT=jpg` par défaut
+- `IMGBB_ALBUM_ID=ymNBDj` par défaut
 
 ## Mapping De Chemins
 
@@ -232,7 +241,7 @@ Un fichier d'exemple est fourni :
 
 Le lancement standard attendu est :
 
-1. copier `.env.example` vers `.env`
+1. créer un `.env` basé sur `.env.example`
 2. remplacer les secrets et URLs nécessaires
 3. lancer le conteneur avec `--env-file .env`
 
