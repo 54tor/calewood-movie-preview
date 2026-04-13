@@ -13,12 +13,9 @@ class Settings(BaseSettings):
     calewood_api_token: str = Field(alias="CALEWOOD_API_TOKEN")
     calewood_api_timeout_seconds: float = Field(default=30.0, alias="CALEWOOD_API_TIMEOUT_SECONDS")
     calewood_api_verify_tls: bool = Field(default=True, alias="CALEWOOD_API_VERIFY_TLS")
-    calewood_api_archived_statuses: str = Field(default="pre_archiving,awaiting_fiche,post_archiving", alias="CALEWOOD_API_ARCHIVED_STATUSES")
     calewood_api_category: str = Field(default="XXX", alias="CALEWOOD_API_CATEGORY")
     calewood_api_per_page: int = Field(default=200, alias="CALEWOOD_API_PER_PAGE")
     calewood_api_single_id: int | None = Field(default=None, alias="CALEWOOD_API_SINGLE_ID")
-    calewood_api_pre_archiving_status: str = Field(default="my-pre-archiving", alias="CALEWOOD_API_PRE_ARCHIVING_STATUS")
-    calewood_api_archiving_status: str = Field(default="my-archiving", alias="CALEWOOD_API_ARCHIVING_STATUS")
     hash_field_name: str = Field(default="info_hash", alias="HASH_FIELD_NAME")
 
     qbittorrent_base_url: str = Field(alias="QBITTORRENT_BASE_URL")
@@ -51,6 +48,3 @@ class Settings(BaseSettings):
         if isinstance(value, str) and value.strip().lower() in {"", "none", "null"}:
             return None
         return value
-
-    def archived_statuses(self) -> set[str]:
-        return {item.strip() for item in self.calewood_api_archived_statuses.split(",") if item.strip()}

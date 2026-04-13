@@ -15,6 +15,7 @@ def main() -> int:
     parser.add_argument("--single-id", type=int)
     parser.add_argument("--force-id", type=int)
     parser.add_argument("--force-hash", type=str)
+    parser.add_argument("--skip-qb", action="store_true")
     parser.add_argument("--list-fiche", action="store_true")
     args = parser.parse_args()
 
@@ -33,6 +34,7 @@ def main() -> int:
             force_live=args.just_do_it,
             force_id=args.force_id,
             force_hash=args.force_hash,
+            skip_qb=args.skip_qb,
         )
     except KeyboardInterrupt:
         log.warning(

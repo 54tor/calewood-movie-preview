@@ -69,11 +69,15 @@ def capture_frames_at_positions(
     for idx, ratio in enumerate(positions, start=1):
         timestamp = duration * ratio
         output = output_dir / f"{filename_prefix}_{idx:02d}.{image_format}"
-        subprocess.run(
-            [ffmpeg_bin, "-y", "-ss", str(timestamp), "-i", str(video_path), "-frames:v", "1", str(output)],
-            check=True,
-            capture_output=True,
-            timeout=timeout,
-        )
+        try:
+            subprocess.run(
+                [ffmpeg_bin, "-y", "-ss", str(timestamp), "-i", str(video_path), "-frames:v", "1", str(output)],
+                check=True,
+                capture_output=True,
+                timeout=timeout,
+            )
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or "").strip()
+            raise RuntimeError(f"ffmpeg_error path={video_path} stderr={stderr}") from exc
         files.append(output)
     return files

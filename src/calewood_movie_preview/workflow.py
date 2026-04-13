@@ -4,7 +4,7 @@ import logging
 import random
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .calewood_api import CalewoodApiClient
 from .config import Settings
@@ -67,7 +67,42 @@ def _ensure_capture_files_exist(captures: list[Path]) -> None:
         raise RuntimeError(f"capture_files_missing count={len(missing)} files={missing}")
 
 
-def run(settings: Settings, force_live: bool = False, force_id: int | None = None, force_hash: str | None = None) -> int:
+def _build_source_table(calewood: CalewoodApiClient, settings: Settings) -> list[dict[str, object]]:
+    return [
+        {
+            "name": "archives",
+            "list_fn": lambda: calewood.list_torrents(
+                status="my-archives",
+                category=settings.calewood_api_category,
+                per_page=settings.calewood_api_per_page,
+            ),
+        },
+        {
+            "name": "upload",
+            "list_fn": lambda: calewood.list_upload_mine_torrents(
+                status="my-uploads",
+                category=settings.calewood_api_category,
+                per_page=settings.calewood_api_per_page,
+            ),
+        },
+        {
+            "name": "uploading",
+            "list_fn": lambda: calewood.list_upload_mine_torrents(
+                status="my-uploading",
+                category=settings.calewood_api_category,
+                per_page=settings.calewood_api_per_page,
+            ),
+        },
+    ]
+
+
+def run(
+    settings: Settings,
+    force_live: bool = False,
+    force_id: int | None = None,
+    force_hash: str | None = None,
+    skip_qb: bool = False,
+) -> int:
     log = logging.getLogger("calewood_movie_preview.workflow")
     dry_run = settings.dry_run and not force_live
 
@@ -77,14 +112,16 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
         settings.calewood_api_timeout_seconds,
         settings.calewood_api_verify_tls,
     )
-    qb = QBittorrentClient(
-        settings.qbittorrent_base_url,
-        settings.qbittorrent_username,
-        settings.qbittorrent_password,
-        settings.qbittorrent_verify_tls,
-        settings.qbittorrent_timeout_seconds,
-    )
-    qb.login()
+    qb = None
+    if not skip_qb:
+        qb = QBittorrentClient(
+            settings.qbittorrent_base_url,
+            settings.qbittorrent_username,
+            settings.qbittorrent_password,
+            settings.qbittorrent_verify_tls,
+            settings.qbittorrent_timeout_seconds,
+        )
+        qb.login()
     imgbb = ImgbbClient(settings.imgbb_api_key, settings.imgbb_timeout_seconds, settings.imgbb_album_id)
 
     exit_code = 0
@@ -93,32 +130,27 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
     if force_mode:
         raw_items = [{"id": force_id, "status": "forced", "sharewood_hash": force_hash}]
     else:
-        raw_items = calewood.list_pre_archiving_torrents(
-            status=settings.calewood_api_pre_archiving_status,
-            category=settings.calewood_api_category,
-            per_page=settings.calewood_api_per_page,
-        )
-        for item in raw_items:
-            if isinstance(item, dict):
-                item["_source"] = "pre_archiving"
-        archiving_items = calewood.list_torrents(
-            status=settings.calewood_api_archiving_status,
-            category=settings.calewood_api_category,
-            per_page=settings.calewood_api_per_page,
-        )
-        for item in archiving_items:
-            if isinstance(item, dict):
-                item["_source"] = "archiving"
-        archived_items = calewood.list_torrents(
-            status=settings.calewood_api_archived_status,
-            category=settings.calewood_api_category,
-            per_page=settings.calewood_api_per_page,
-        )
-        for item in archived_items:
-            if isinstance(item, dict):
-                item["_source"] = "archived"
-        raw_items += archiving_items
-        raw_items += archived_items
+        source_table = _build_source_table(calewood, settings)
+        staged: list[tuple[str, dict]] = []
+        for source in source_table:
+            list_fn = source["list_fn"]
+            name = str(source["name"])
+            for item in list_fn():
+                if not isinstance(item, dict):
+                    continue
+                staged.append((name, item))
+
+        seen_ids: set[int] = set()
+        raw_items = []
+        for source_name, item in staged:
+            torrent_id = item.get("id")
+            if not isinstance(torrent_id, int) or torrent_id in seen_ids:
+                continue
+            seen_ids.add(torrent_id)
+            raw = item
+            if isinstance(raw, dict) and raw:
+                raw["_source"] = source_name
+                raw_items.append(raw)
     if settings.calewood_api_single_id is not None:
         raw_items = [raw for raw in raw_items if raw.get("id") == settings.calewood_api_single_id]
 
@@ -133,8 +165,7 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
         raw_status_counts[str(raw_status)] += 1
 
     seen_ids: set[int] = set()
-    planned_jobs: list[dict[str, object]] = []
-    detailed_preflight_enabled = len(raw_items) <= settings.preflight_max_items
+    detailed_preflight_enabled = False
     stats = {
         "considered": 0,
         "processed": 0,
@@ -157,8 +188,6 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
             "items_fetched": len(raw_items),
             "category": settings.calewood_api_category,
             "single_id": settings.calewood_api_single_id,
-            "pre_archiving_status": settings.calewood_api_pre_archiving_status,
-            "archived_statuses": sorted(settings.archived_statuses()),
             "raw_status_counts": dict(raw_status_counts),
             "missing_id_or_status": missing_id_or_status,
             "detailed_preflight_enabled": detailed_preflight_enabled,
@@ -173,20 +202,9 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
             "items_fetched": len(raw_items),
         },
     )
-    if not detailed_preflight_enabled:
-        log.info(
-            "Skipping volume estimation because source batch is large",
-            extra={
-                "event": "preflight_estimation_skipped",
-                "items_fetched": len(raw_items),
-                "preflight_max_items": settings.preflight_max_items,
-            },
-        )
     for raw in raw_items:
         torrent = calewood.to_model(raw, settings.hash_field_name)
-        source = raw.get("_source")
-        allow_done_from_archived = source == "archived" and torrent.status == "done"
-        if torrent is None or (not force_mode and torrent.status not in settings.archived_statuses() and not allow_done_from_archived):
+        if torrent is None:
             continue
         if torrent.torrent_id in seen_ids:
             continue
@@ -201,6 +219,28 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
         }
         try:
             log.info("Processing torrent", extra={"event": "processing_torrent", **context})
+            comment = torrent.comment if torrent.comment is not None else calewood.torrent_comment(torrent.torrent_id)
+            links = find_imgbb_links(comment)
+            if 1 <= len(links) < 9:
+                stats["partial_comments"] += 1
+                stats["warnings"] += 1
+                log.warning(
+                    "Partial imgbb links already present in comment",
+                    extra={"event": "partial_imgbb_links_warning", "imgbb_link_count": len(links), **context},
+                )
+            if len(links) >= 9:
+                stats["existing_comments"] += 1
+                log.info(
+                    "Skipping torrent with existing imgbb links",
+                    extra={"event": "skip_existing_imgbb_links", "imgbb_link_count": len(links), **context},
+                )
+                continue
+            if skip_qb:
+                log.info(
+                    "Candidate requires image generation (qBittorrent skipped)",
+                    extra={"event": "skip_qb_candidate", **context},
+                )
+                continue
             candidate_hashes = [hash_value for hash_value in [torrent.sharewood_hash, torrent.lacale_hash] if hash_value]
             if not candidate_hashes:
                 stats["missing_hash"] += 1
@@ -261,92 +301,63 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
                     **context,
                 },
             )
-            comment = torrent.comment if torrent.comment is not None else calewood.torrent_comment(torrent.torrent_id)
-            links = find_imgbb_links(comment)
-            if 1 <= len(links) < 9:
-                stats["partial_comments"] += 1
-                stats["warnings"] += 1
-                log.warning(
-                    "Partial imgbb links already present in comment",
-                    extra={"event": "partial_imgbb_links_warning", "imgbb_link_count": len(links), **context},
-                )
-                continue
-            if links:
-                stats["existing_comments"] += 1
-                log.info(
-                    "Skipping torrent with existing imgbb links",
-                    extra={"event": "skip_existing_imgbb_links", "imgbb_link_count": len(links), **context},
-                )
-                continue
             temp_dir = settings.temp_dir / str(torrent.torrent_id)
             capture_jobs = _build_capture_jobs(torrent, candidates)
-            if detailed_preflight_enabled:
-                stats["queued_for_capture"] += len(capture_jobs)
-                stats["queued_bytes"] += sum(int(job["candidate"].size) for job in capture_jobs)
-                planned_jobs.append(
-                    {
-                        "torrent": torrent,
-                        "capture_jobs": capture_jobs,
-                        "temp_dir": temp_dir,
-                        "context": context,
-                    }
-                )
-            else:
-                captures = []
-                for job in capture_jobs:
-                    duration = probe_duration(settings.ffprobe_bin, job["candidate"].path)
-                    captures.extend(
-                        capture_frames_at_positions(
-                            settings.ffmpeg_bin,
-                            job["candidate"].path,
-                            duration,
-                            temp_dir,
-                            settings.image_format,
-                            job["prefix"],
-                            job["positions"],
-                        )
+            captures = []
+            for job in capture_jobs:
+                duration = probe_duration(settings.ffprobe_bin, job["candidate"].path)
+                captures.extend(
+                    capture_frames_at_positions(
+                        settings.ffmpeg_bin,
+                        job["candidate"].path,
+                        duration,
+                        temp_dir,
+                        settings.image_format,
+                        job["prefix"],
+                        job["positions"],
                     )
+                )
+            log.info(
+                "Generated capture set",
+                extra={
+                    "event": "captures_generated",
+                    "capture_count": len(captures),
+                    "capture_dir": str(temp_dir),
+                    "video_count": len(candidates),
+                    **context,
+                },
+            )
+            _ensure_capture_files_exist(captures)
+            if dry_run:
+                stats["processed"] += 1
                 log.info(
-                    "Generated capture set",
+                    "Dry-run active, skipping imgbb upload and comment post",
                     extra={
-                        "event": "captures_generated",
+                        "event": "dry_run_no_remote_write",
                         "capture_count": len(captures),
                         "capture_dir": str(temp_dir),
                         "video_count": len(candidates),
                         **context,
                     },
                 )
-                _ensure_capture_files_exist(captures)
-                if dry_run:
-                    stats["processed"] += 1
-                    log.info(
-                        "Dry-run active, skipping imgbb upload and comment post",
-                        extra={
-                            "event": "dry_run_no_remote_write",
-                            "capture_count": len(captures),
-                            "capture_dir": str(temp_dir),
-                            "video_count": len(candidates),
-                            **context,
-                        },
-                    )
-                    continue
+                continue
 
-                urls = [imgbb.upload(path) for path in captures]
-                log.info(
-                    "Completed imgbb upload",
-                    extra={
-                        "event": "imgbb_upload_completed",
-                        "uploaded_count": len(urls),
-                        "capture_dir": str(temp_dir),
-                        **context,
-                    },
-                )
-                calewood.post_comment(torrent.torrent_id, _build_prepended_comment(urls, comment))
-                stats["processed"] += 1
-                log.info(
-                    "Posted comment to CALEWOOD_API",
-                    extra={"event": "comment_posted", "posted_link_count": len(urls), "prepended_to_existing_comment": bool(comment.strip()), **context},
-                )
+            urls = [imgbb.upload(path) for path in captures]
+            log.info(
+                "Completed imgbb upload",
+                extra={
+                    "event": "imgbb_upload_completed",
+                    "uploaded_count": len(urls),
+                    "capture_dir": str(temp_dir),
+                    **context,
+                },
+            )
+            calewood.post_comment(torrent.torrent_id, _build_prepended_comment(urls, comment))
+            stats["processed"] += 1
+            log.info(
+                "Posted comment to CALEWOOD_API",
+                extra={"event": "comment_posted", "posted_link_count": len(urls), "prepended_to_existing_comment": bool(comment.strip()), **context},
+            )
         except RuntimeError as exc:
             if str(exc) == "too_many_video_files_warning":
                 stats["too_many_video_files"] += 1
@@ -357,93 +368,9 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
             log.error(str(exc), extra={"event": "workflow_error", **context})
             exit_code = 1
 
-    if detailed_preflight_enabled:
-        log.info(
-            "Preflight completed",
-            extra={
-                "event": "preflight_completed",
-                "dry_run": dry_run,
-                "queued_for_capture": stats["queued_for_capture"],
-                "queued_bytes": stats["queued_bytes"],
-                "queued_gib": round(stats["queued_bytes"] / (1024**3), 2),
-                "considered": stats["considered"],
-                "existing_comments": stats["existing_comments"],
-                "partial_comments": stats["partial_comments"],
-                "missing_hash": stats["missing_hash"],
-                "qb_not_found": stats["qb_not_found"],
-                "qb_incomplete": stats["qb_incomplete"],
-                "too_many_video_files": stats["too_many_video_files"],
-            },
-        )
-        log.info("Stage 3/4: generating captures", extra={"event": "stage_generate_captures", "queued_for_capture": len(planned_jobs)})
-        if not dry_run:
-            log.info("Stage 4/4: uploading and posting comments", extra={"event": "stage_remote_publish", "queued_for_capture": len(planned_jobs)})
-
-        for job in planned_jobs:
-            torrent = job["torrent"]
-            capture_jobs = job["capture_jobs"]
-            temp_dir = job["temp_dir"]
-            context = job["context"]
-            try:
-                captures = []
-                for capture_job in capture_jobs:
-                    duration = probe_duration(settings.ffprobe_bin, capture_job["candidate"].path)
-                    captures.extend(
-                        capture_frames_at_positions(
-                            settings.ffmpeg_bin,
-                            capture_job["candidate"].path,
-                            duration,
-                            temp_dir,
-                            settings.image_format,
-                            capture_job["prefix"],
-                            capture_job["positions"],
-                        )
-                    )
-                log.info(
-                    "Generated capture set",
-                    extra={
-                        "event": "captures_generated",
-                        "capture_count": len(captures),
-                        "capture_dir": str(temp_dir),
-                        "video_count": len(capture_jobs),
-                        **context,
-                    },
-                )
-                _ensure_capture_files_exist(captures)
-                if dry_run:
-                    stats["processed"] += 1
-                    log.info(
-                        "Dry-run active, skipping imgbb upload and comment post",
-                        extra={
-                            "event": "dry_run_no_remote_write",
-                            "capture_count": len(captures),
-                            "capture_dir": str(temp_dir),
-                            "video_count": len(capture_jobs),
-                            **context,
-                        },
-                    )
-                    continue
-
-                urls = [imgbb.upload(path) for path in captures]
-                log.info(
-                    "Completed imgbb upload",
-                    extra={
-                        "event": "imgbb_upload_completed",
-                        "uploaded_count": len(urls),
-                        "capture_dir": str(temp_dir),
-                        **context,
-                    },
-                )
-                calewood.post_comment(torrent.torrent_id, _build_prepended_comment(urls, comment))
-                stats["processed"] += 1
-                log.info(
-                    "Posted comment to CALEWOOD_API",
-                    extra={"event": "comment_posted", "posted_link_count": len(urls), "prepended_to_existing_comment": bool(comment.strip()), **context},
-                )
-            except Exception as exc:
-                stats["errors"] += 1
-                log.error(str(exc), extra={"event": "workflow_error", **context})
-                exit_code = 1
+    log.info("Stage 3/4: generating captures", extra={"event": "stage_generate_captures"})
+    if not dry_run:
+        log.info("Stage 4/4: uploading and posting comments", extra={"event": "stage_remote_publish"})
     log.info(
         "Workflow finished",
         extra={

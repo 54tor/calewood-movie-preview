@@ -5,7 +5,7 @@
 Construire un outil exécutable dans une image Docker qui :
 
 1. interroge une API tracker privée nommée ici `CALEWOOD_API`,
-2. récupère les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list` et `my-archiving` via `/api/archive/list`,
+2. récupère les torrents via `/api/upload/list?status=my-uploads` et `/api/upload/list?status=my-uploading`,
 3. ignore tout torrent dont le commentaire contient déjà au moins un lien `imgbb`,
 4. retrouve le torrent correspondant dans qBittorrent via un hash de correspondance,
 5. localise les fichiers vidéo sur disque (exclusion des fichiers `Bonus`),
@@ -67,7 +67,7 @@ En mode forcé, la logique de filtrage sur les statuts ne doit pas empêcher le 
 
 Pour chaque exécution :
 
-1. récupérer les torrents `my-pre-archiving` via `/api/archive/pre-archivage/list` et `my-archiving` via `/api/archive/list`,
+1. récupérer les torrents via `/api/upload/list?status=my-uploads` et `/api/upload/list?status=my-uploading`,
 2. filtrer sur la catégorie configurée,
 3. récupérer le hash de correspondance côté tracker,
 4. se connecter à qBittorrent Web API,
@@ -288,11 +288,8 @@ Variables d'environnement minimales :
 - `CALEWOOD_API_TOKEN`
 - `CALEWOOD_API_TIMEOUT_SECONDS`
 - `CALEWOOD_API_VERIFY_TLS`
-- `CALEWOOD_API_ARCHIVED_STATUSES`
 - `CALEWOOD_API_CATEGORY`
 - `CALEWOOD_API_SINGLE_ID`
-- `CALEWOOD_API_PRE_ARCHIVING_STATUS`
-- `CALEWOOD_API_ARCHIVING_STATUS`
 - `HASH_FIELD_NAME`
 - `QBITTORRENT_BASE_URL`
 - `QBITTORRENT_USERNAME`
@@ -316,11 +313,8 @@ Optionnelles :
 Valeurs par défaut attendues :
 
 - `CALEWOOD_API_BASE_URL=https://calewood.n0flow.io/api`
-- `CALEWOOD_API_ARCHIVED_STATUSES=pre_archiving,awaiting_fiche,post_archiving`
 - `CALEWOOD_API_CATEGORY=XXX`
 - `CALEWOOD_API_SINGLE_ID` vide par défaut, utile pour un test ciblé,
-- `CALEWOOD_API_PRE_ARCHIVING_STATUS=my-pre-archiving`
-- `CALEWOOD_API_ARCHIVING_STATUS=my-archiving`
 - `CALEWOOD_API_PER_PAGE=200`
 - `IMGBB_ALBUM_ID=ymNBDj`
 
