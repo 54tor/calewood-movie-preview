@@ -98,11 +98,27 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
             category=settings.calewood_api_category,
             per_page=settings.calewood_api_per_page,
         )
-        raw_items += calewood.list_torrents(
+        for item in raw_items:
+            if isinstance(item, dict):
+                item["_source"] = "pre_archiving"
+        archiving_items = calewood.list_torrents(
             status=settings.calewood_api_archiving_status,
             category=settings.calewood_api_category,
             per_page=settings.calewood_api_per_page,
         )
+        for item in archiving_items:
+            if isinstance(item, dict):
+                item["_source"] = "archiving"
+        archived_items = calewood.list_torrents(
+            status=settings.calewood_api_archived_status,
+            category=settings.calewood_api_category,
+            per_page=settings.calewood_api_per_page,
+        )
+        for item in archived_items:
+            if isinstance(item, dict):
+                item["_source"] = "archived"
+        raw_items += archiving_items
+        raw_items += archived_items
     if settings.calewood_api_single_id is not None:
         raw_items = [raw for raw in raw_items if raw.get("id") == settings.calewood_api_single_id]
 
@@ -168,7 +184,9 @@ def run(settings: Settings, force_live: bool = False, force_id: int | None = Non
         )
     for raw in raw_items:
         torrent = calewood.to_model(raw, settings.hash_field_name)
-        if torrent is None or (not force_mode and torrent.status not in settings.archived_statuses()):
+        source = raw.get("_source")
+        allow_done_from_archived = source == "archived" and torrent.status == "done"
+        if torrent is None or (not force_mode and torrent.status not in settings.archived_statuses() and not allow_done_from_archived):
             continue
         if torrent.torrent_id in seen_ids:
             continue
