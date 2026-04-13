@@ -71,7 +71,19 @@ def capture_frames_at_positions(
         output = output_dir / f"{filename_prefix}_{idx:02d}.{image_format}"
         try:
             subprocess.run(
-                [ffmpeg_bin, "-y", "-ss", str(timestamp), "-i", str(video_path), "-frames:v", "1", str(output)],
+                [
+                    ffmpeg_bin,
+                    "-y",
+                    "-ss",
+                    str(timestamp),
+                    "-i",
+                    str(video_path),
+                    "-frames:v",
+                    "1",
+                    "-update",
+                    "1",
+                    str(output),
+                ],
                 check=True,
                 capture_output=True,
                 timeout=timeout,
