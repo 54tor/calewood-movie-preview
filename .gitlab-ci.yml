@@ -15,7 +15,6 @@ variables:
   DOCKER_IMAGE: "$CI_REGISTRY/calewood/calewood-movie-preview"
   DOCKER_HUB_IMAGE: "$DOCKER_HUB_ORG/calewood-movie-preview"
   BUILDER_TARGET_PLATFORMS: "linux/amd64"
-  BASE_IMAGE: "calewood-movie-preview"
 
 .buildx-default: &buildx-default
   before_script:
