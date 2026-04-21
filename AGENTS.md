@@ -5,8 +5,8 @@
 Construire un outil exécutable dans une image Docker qui :
 
 1. interroge une API tracker privée nommée ici `CALEWOOD_API`,
-2. récupère les torrents via `/api/upload/list?status=my-uploads` et `/api/upload/list?status=my-uploading`,
-3. ignore tout torrent dont le commentaire contient déjà au moins un lien `imgbb`,
+2. récupère les torrents via `/api/archive/list?status=my-archives`, `/api/upload/list?status=my-uploads` et `/api/upload/list?status=my-uploading`,
+3. ignore tout torrent dont le commentaire contient déjà suffisamment de previews imgbb (`>=9` liens),
 4. retrouve le torrent correspondant dans qBittorrent via un hash de correspondance,
 5. localise les fichiers vidéo sur disque (exclusion des fichiers `Bonus`),
 6. génère un nombre de captures multiple de `3` (max `27`) selon l'algorithme défini,
@@ -67,20 +67,21 @@ En mode forcé, la logique de filtrage sur les statuts ne doit pas empêcher le 
 
 Pour chaque exécution :
 
-1. récupérer les torrents via `/api/upload/list?status=my-uploads` et `/api/upload/list?status=my-uploading`,
+1. récupérer les torrents via `/api/archive/list?status=my-archives`, `/api/upload/list?status=my-uploads` et `/api/upload/list?status=my-uploading`,
 2. filtrer sur la catégorie configurée,
-3. récupérer le hash de correspondance côté tracker,
-4. se connecter à qBittorrent Web API,
-5. retrouver le torrent qBittorrent correspondant à ce hash,
-6. déterminer les fichiers vidéo éligibles,
-7. charger le commentaire uniquement pour les candidats réellement traitables,
-8. détecter la présence d'au moins un lien `imgbb` dans le commentaire,
-9. si un lien `imgbb` existe déjà, marquer le torrent comme `skipped_already_has_preview`,
-10. sinon, calculer la durée totale,
-11. extraire les captures selon l'algorithme multiple de `3`,
-12. uploader les captures sur `IMGBB_API`,
-13. poster un commentaire avec les URLs en préfixant l'ancien commentaire,
-14. journaliser le résultat.
+3. charger le commentaire du torrent,
+4. détecter les liens `imgbb` existants,
+5. si le commentaire contient `1` à `8` liens imgbb, logguer `partial_imgbb_links_warning` puis skip,
+6. si le commentaire contient `>=9` liens imgbb, skip,
+7. récupérer le hash de correspondance côté tracker,
+8. se connecter à qBittorrent Web API,
+9. retrouver le torrent qBittorrent correspondant à ce hash,
+10. déterminer les fichiers vidéo éligibles,
+11. calculer la durée totale,
+12. extraire les captures selon l'algorithme multiple de `3`,
+13. uploader les captures sur `IMGBB_API`,
+14. poster un commentaire avec les URLs en préfixant l'ancien commentaire,
+15. journaliser le résultat.
 
 ## Correspondance avec qBittorrent
 
@@ -151,6 +152,8 @@ Exigences techniques :
 - vérifier que le fichier existe avant extraction,
 - échouer proprement si `ffprobe` ou `ffmpeg` ne sont pas disponibles,
 - encapsuler les appels système avec timeout.
+- prévoir un fallback ffmpeg (seek avant/après `-i`, flags tolérants corruption),
+- accepter une capture si le fichier image est produit, même si `ffmpeg` retourne non-zéro.
 
 ## Upload vers imgbb
 
@@ -187,7 +190,8 @@ Le job doit être idempotent.
 
 Règles :
 
-- si le commentaire contient déjà un lien `imgbb`, ne rien republier,
+- si le commentaire contient `>=9` liens `imgbb`, ne rien republier,
+- si le commentaire contient `1` à `8` liens `imgbb`, émettre `partial_imgbb_links_warning` puis ne rien republier,
 - si une exécution précédente a produit des captures mais n'a pas posté de commentaire, les fichiers temporaires ne doivent pas être réutilisés implicitement,
 - dans ce cas, émettre un log exploitable pour réparation manuelle,
 - l'outil peut être relancé sans duplication de commentaires.

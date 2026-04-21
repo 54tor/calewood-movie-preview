@@ -1,6 +1,6 @@
 # calewood-movie-preview
 
-`calewood-movie-preview` est une image Docker `linux/amd64` qui automatise la génération de previews vidéo pour des torrents en pré-archivage.
+`calewood-movie-preview` est une image Docker `linux/amd64` qui automatise la génération de previews vidéo.
 
 Le conteneur :
 
@@ -28,15 +28,15 @@ Pour autoriser les opérations réelles, il faudra lancer le conteneur avec `--j
 
 À chaque exécution, le conteneur :
 
-1. récupère les torrents via `/api/upload/list?status=my-uploads` et `/api/upload/list?status=my-uploading`,
+1. récupère les torrents via `/api/archive/list?status=my-archives`, `/api/upload/list?status=my-uploads` et `/api/upload/list?status=my-uploading`,
 2. filtre en `cat=XXX`,
-3. récupère le hash de correspondance depuis `CALEWOOD_API`,
-4. interroge qBittorrent,
-5. sélectionne les fichiers vidéo éligibles,
-6. lit le commentaire uniquement pour les candidats traitables,
-7. détecte les liens `imgbb.com` et `i.ibb.co`,
-8. skippe les torrents déjà illustrés,
-9. émet un warning si le commentaire contient entre `1` et `8` liens imgbb,
+3. lit le commentaire,
+4. détecte les liens `imgbb.com` et `i.ibb.co`,
+5. skippe les torrents avec `>=9` liens imgbb,
+6. émet un warning si le commentaire contient entre `1` et `8` liens imgbb (et skippe aussi),
+7. récupère le hash de correspondance depuis `CALEWOOD_API`,
+8. interroge qBittorrent,
+9. sélectionne les fichiers vidéo éligibles,
 10. calcule la durée avec `ffprobe`,
 11. extrait les captures avec `ffmpeg`,
 12. upload les captures sur imgbb,
@@ -189,6 +189,16 @@ Le comportement recommandé reste :
 - éviter le remapping quand ce montage identique est possible,
 - réserver `PATH_MAP_SOURCE` et `PATH_MAP_TARGET` aux environnements où cette symétrie de chemin n'est pas faisable.
 
+## Robustesse ffmpeg
+
+Certains fichiers peuvent retourner un code `ffmpeg` non nul tout en produisant une image exploitable.
+
+Le workflow applique des fallbacks :
+
+- plusieurs variantes de commande (`-ss` avant/après `-i`, mode tolérant corruption),
+- si un fichier image est bien produit, la capture est conservée même avec un code retour non nul,
+- les erreurs `ffprobe`/`ffmpeg` sont tronquées dans les logs pour éviter des dumps massifs.
+
 ## Dépendances Techniques
 
 Le projet cible Python 3.12 et s'appuie notamment sur :
@@ -234,7 +244,10 @@ docker run --rm --platform linux/amd64 \
 Pour désactiver la phase qBittorrent (debug) :
 
 ```bash
-sat0r/calewood-movie-preview --skip-qb
+docker run --rm --platform linux/amd64 \
+  --env-file .env \
+  -v <HOST_QBITTORRENT_DOWNLOAD_ROOT>:<HOST_QBITTORRENT_DOWNLOAD_ROOT>:ro \
+  sat0r/calewood-movie-preview --skip-qb
 ```
 
 ### Forcer Un ID/Hash
@@ -249,6 +262,16 @@ docker run --rm --platform linux/amd64 \
 ```
 
 Les deux options `--force-id` et `--force-hash` sont obligatoires et doivent être fournies ensemble.
+
+### Lister Les Fiches
+
+Pour lister `my-pre-archiving` en `cat=XXX` :
+
+```bash
+docker run --rm --platform linux/amd64 \
+  --env-file .env \
+  sat0r/calewood-movie-preview --list-fiche
+```
 
 ## Fichier Env
 
